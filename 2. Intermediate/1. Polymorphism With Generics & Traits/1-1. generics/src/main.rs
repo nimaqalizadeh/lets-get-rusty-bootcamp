@@ -5,11 +5,12 @@ struct BrowserCommand<T> {
 
 impl<T> BrowserCommand<T> {
     fn new(name: String, payload: T) -> Self {
-        BrowserCommand {
+        Self {
             name,
             payload,
         }
     }
+    // return a Generic
     fn get_payload(&self) -> &T {
         &self.payload
     }
@@ -30,7 +31,10 @@ fn main() {
         "zoom".to_owned(),
         200
     );
+
     cmd1.print_payload();
+    // cmd2.print_payload();
+
     let p1 = cmd1.get_payload();
     let p2 = cmd2.get_payload();
 
