@@ -150,4 +150,16 @@ Rust relies heavily on this concept because it aligns with Rust's philosophy of 
 
 Because of monomorphization, using generics in Rust costs you absolutely nothing in terms of runtime performance compared to writing duplicate code by hand. You only pay the cost during compile time and in the size of the final binary file.
 
+### What gets monomorphized
+
+Monomorphization applies to **all** generic constructs, not just functions:
+
+- **structs** — `BrowserCommand<String>` and `BrowserCommand<i32>` become two separate structs in the binary
+- **enums** — `Option<String>` and `Option<i32>` become two separate enums
+- **free functions** — `serialize_payload::<String>` and `serialize_payload::<i32>` become two separate functions
+- **impl blocks** — the methods inside `impl<T> BrowserCommand<T>` are duplicated for each concrete `T` used
+- **closures** — each closure with generic bounds gets its own monomorphized version
+
+The rule: **anywhere `T` appears and gets substituted with a concrete type, the compiler generates a dedicated copy**.
+
 video: lets get rusty/39.Generics
