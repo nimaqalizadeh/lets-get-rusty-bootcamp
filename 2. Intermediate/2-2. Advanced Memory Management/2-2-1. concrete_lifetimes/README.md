@@ -168,6 +168,25 @@ When you hit a borrow checker error, the mental model is:
 > ```
 > NLL made the borrow checker significantly smarter — it tracks the actual **usage span** rather than the syntactic block boundary, eliminating many false positives that frustrated early Rust programmers.
 
+> **Note — The Borrowing Rule:**
+> At any given time, you can have either:
+> - **one mutable reference** (`&mut T`), OR
+> - **any number of immutable references** (`&T`)
+>
+> But never both at the same time. This prevents data races at compile time.
+> ```rust
+> let mut x = 5;
+> let r1 = &x;      // immutable borrow
+> let r2 = &x;      // fine — multiple immutable borrows allowed
+> let r3 = &mut x;  // ERROR: cannot borrow x as mutable while immutable borrows exist
+> println!("{r1} {r2} {r3}");
+> ```
+> ```rust
+> let mut x = 5;
+> let r1 = &mut x;  // mutable borrow
+> let r2 = &mut x;  // ERROR: cannot have two mutable borrows at the same time
+> ```
+
 There are two types of lifetimes: concrete and generic
 
 Concrete lifetime is the time during which a value exists at a particular memory location.
