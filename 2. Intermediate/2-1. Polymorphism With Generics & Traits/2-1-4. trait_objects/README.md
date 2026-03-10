@@ -40,12 +40,19 @@ Trait objects allow us to define a type which implements a trait without knowing
 You can also store trait objects in a collection to hold mixed types:
 
 ```rust
+// error: without annotation, compiler infers &Car from first element, then &House doesn't match
+let paintable_objects = vec![&car, &house];
+
+// correct: tell the compiler to treat all elements as &dyn Paint
 let paintable_objects: Vec<&dyn Paint> = vec![&car, &house];
 ```
+
+The type annotation tells the compiler to coerce each `&Car` and `&House` into `&dyn Paint`, so they all share the same type. This is one of the primary use cases for trait objects: **heterogeneous collections** where different concrete types need to be stored together under a common trait.
 
 ## Static dispatch vs dynamic dispatch
 
 **Static dispatch** (`impl Trait` / generics with trait bounds):
+
 - The compiler generates a separate concrete implementation for each type at compile time (monomorphization)
 - Zero runtime overhead — function calls are resolved at compile time
 - Results in larger binary size due to code duplication
@@ -57,6 +64,7 @@ fn paint_vehicle_red<T: Vehicle>(object: &T) {
 ```
 
 **Dynamic dispatch** (`dyn Trait`):
+
 - The concrete type is resolved at runtime via a vtable (a table of function pointers)
 - Small runtime overhead due to the vtable lookup on each method call
 - More flexible — allows heterogeneous collections and returning different types from one function
@@ -68,3 +76,26 @@ fn paint_red(object: &dyn Paint) {
 ```
 
 Use static dispatch when performance is critical and the types are known at compile time. Use dynamic dispatch when you need flexibility, such as storing different types in a collection or returning different types from a function.
+
+---
+
+# Trait Object from physical view
+
+What is a Trait Object?
+At a physical, memory level, a trait object is a "fat pointer".
+
+When you create a standard reference like &Car, it is a single pointer just pointing to the memory address of the Car data.
+
+Because a trait object (&dyn Paint or Box<dyn Paint>) has erased the concrete type information (it forgets whether it is a Car or a House), a single pointer is no longer enough. The program needs a way to figure out which paint() method to call at runtime.
+
+To solve this, a trait object pointer is twice as large as a normal pointer. It contains two things:
+
+A Data Pointer: Points to the actual data instance (the Car or House).
+
+A Vtable Pointer: Points to a Virtual Method Table (vtable). This is a static block of memory containing pointers to the actual, concrete method implementations (like Car::paint or House::paint) for that specific type.
+
+When you call object.paint(), Rust follows the vtable pointer, looks up the correct function address for paint, and executes it. This lookup is the "small runtime overhead" you mentioned.
+
+The primary goal of a trait object is to enable polymorphism through type erasure—allowing your code to work with different types interchangeably at runtime without needing to know what they are at compile time.
+
+video: lets get rusty/043.Trait Objects
