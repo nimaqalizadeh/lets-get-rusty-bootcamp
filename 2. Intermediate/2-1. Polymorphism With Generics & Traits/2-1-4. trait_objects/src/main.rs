@@ -70,12 +70,13 @@ fn main() {
 
     paint_red(&car);
     paint_red(&house);
-    paint_red(object.as_ref());
+
+    paint_red(object.as_ref()); // this changed
 
     paint_vehicle_red(&car);
 }
 
-fn paint_red(object: &dyn Paint) {
+fn paint_red(object: &dyn Paint) { // this changed
     object.paint("red".to_owned());
 }
 

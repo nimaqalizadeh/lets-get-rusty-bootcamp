@@ -59,22 +59,28 @@ struct Truck { info: VehicleInfo }
 
 A **trait bound** is a constraint on a generic type: "this `T` must implement this trait." It restricts which types are allowed to be passed in.
 
+A "trait bound" (or type bound) is how you tell the compiler/type-checker: "I don't care exactly what type this is, as long as it implements this specific behavior." This is incredibly powerful because it allows you to write generic functions that are still safe to use.
+
 To call a user-defined method on `T` inside a generic function, that method must come from a trait listed as a bound — the compiler needs a guarantee that every possible `T` has that method. Without a bound, you can accept any type but cannot call any user-defined methods on it.
 
-There are three ways to write trait bounds:
+There are four ways to write trait bounds:
 
 **1. Inline with the generic**
+
 ```rust
 fn paint_red<T: Paint>(object: &T) { ... }
 ```
 
 **2. `where` clause** — cleaner when there are multiple bounds
+
 ```rust
 fn paint_vehicle_red<T>(object: &T) where T: Paint + Park { ... }
 ```
+
 `+` combines multiple bounds — `T` must implement both `Paint` and `Park`.
 
 **3. `impl Trait` in parameter position** — syntactic sugar for inline, generic (caller chooses the type)
+
 ```rust
 fn paint_red(object: &impl Paint) { ... }
 // equivalent to:
@@ -82,12 +88,14 @@ fn paint_red<T: Paint>(object: &T) { ... }
 ```
 
 Use when you have a single parameter and don't need to name or reuse the type. However, if you need two parameters to be the **same** type, use inline instead:
+
 ```rust
 fn paint_both<T: Paint>(a: &T, b: &T) { ... }   // a and b must be the same type
 fn paint_both(a: &impl Paint, b: &impl Paint) { ... }  // a and b can be different types
 ```
 
 **4. `impl Trait` in return position** — not generic, the function decides the type
+
 ```rust
 fn create_paintable_object() -> impl Paint { House {} }
 ```
@@ -103,11 +111,13 @@ object.some_house_method();      // ERROR — caller only sees impl Paint, not H
 Useful for encapsulation (swap `House` for another type later without breaking callers) and required when returning closures or complex iterator chains whose types can't be named.
 
 **Key constraint:** only one concrete type can be returned. This is illegal:
+
 ```rust
 fn create_paintable_object(flag: bool) -> impl Paint {
     if flag { House {} } else { Car { ... } }  // ERROR — two different types
 }
 ```
+
 For returning different types at runtime, use `dyn Paint` instead.
 
 ### Note: trait bounds and `impl` blocks
@@ -132,14 +142,14 @@ fn do_something<T>(object: &T) -> String {
 
 In Python, a class bundles data, behavior, and inheritance into one concept. Rust separates these into distinct building blocks:
 
-| Python (OOP)                      | Rust equivalent                              |
-|-----------------------------------|----------------------------------------------|
-| Class with attributes             | Struct with fields                           |
-| Class with methods                | `impl` block on a struct                     |
-| Inheritance of data               | Composition (embed a struct as a field)      |
-| Inheritance of behavior           | Implement a trait                            |
-| Method shared across subclasses   | Default implementation in a trait            |
-| Polymorphism via base class       | Generics with trait bounds / `dyn Trait`     |
+| Python (OOP)                    | Rust equivalent                          |
+| ------------------------------- | ---------------------------------------- |
+| Class with attributes           | Struct with fields                       |
+| Class with methods              | `impl` block on a struct                 |
+| Inheritance of data             | Composition (embed a struct as a field)  |
+| Inheritance of behavior         | Implement a trait                        |
+| Method shared across subclasses | Default implementation in a trait        |
+| Polymorphism via base class     | Generics with trait bounds / `dyn Trait` |
 
 The key difference: Rust separates data (struct), behavior (impl/trait), and polymorphism (generics/trait bounds) into distinct concepts, while Python bundles them all into a class hierarchy.
 
