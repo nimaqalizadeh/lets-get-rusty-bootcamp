@@ -153,4 +153,4 @@ In Python, a class bundles data, behavior, and inheritance into one concept. Rus
 
 The key difference: Rust separates data (struct), behavior (impl/trait), and polymorphism (generics/trait bounds) into distinct concepts, while Python bundles them all into a class hierarchy.
 
-video: lets get rusty/40.Trait 41.Trait Bounds
+video: lets get rusty/040.Trait 041.Trait Bounds

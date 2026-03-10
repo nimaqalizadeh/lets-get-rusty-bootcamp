@@ -84,4 +84,4 @@ struct Point { x: f32, y: f32 }
 
 If you try to `derive(Copy)` without `Clone`, the compiler will error.
 
-video: lets get rusty/42.Supertraits
+video: lets get rusty/042.Supertraits

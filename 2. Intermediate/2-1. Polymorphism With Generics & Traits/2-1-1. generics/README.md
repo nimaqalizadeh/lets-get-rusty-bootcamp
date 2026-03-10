@@ -162,4 +162,4 @@ Monomorphization applies to **all** generic constructs, not just functions:
 
 The rule: **anywhere `T` appears and gets substituted with a concrete type, the compiler generates a dedicated copy**.
 
-video: lets get rusty/39.Generics
+video: lets get rusty/039.Generics
