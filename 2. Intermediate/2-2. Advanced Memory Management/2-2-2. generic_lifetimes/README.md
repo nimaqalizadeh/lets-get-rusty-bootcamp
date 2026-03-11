@@ -62,7 +62,9 @@ But the compiler deliberately does **not** look at the body from the caller's pe
 // The caller — compiler only sees the signature.
 // Without lifetime annotations, it cannot conclude
 // whether the return is tied to p1, p2, or both.
-let result = first_turn(p1, p2); // which lifetime does `result` have?
+let p1: &str = "player 1";
+let p2: &str = "player 2";
+let result: &str = first_turn(p1, p2); // which lifetime does `result` have?
 ```
 
 So you must declare it explicitly. Your annotation `<'a>` on both parameters is exactly you saying: "the return lifetime is the intersection of both" — which is precisely what the compiler would have concluded if it had looked at the body.
