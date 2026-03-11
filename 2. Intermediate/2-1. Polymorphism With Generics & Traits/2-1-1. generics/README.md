@@ -1,6 +1,6 @@
 # Generics
 
-Generics allow to defien structs, enums and functions with generic types
+Generics allow to define structs, enums and functions with generic types
 that would be substituted for concrete types at compile time
 
 ## Conventions for naming generics
