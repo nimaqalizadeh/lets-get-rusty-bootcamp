@@ -1,6 +1,6 @@
 # Orphan rule
 
-In order to implement a trait on a given type either the trait or the type must be defined on the current crate, without this rule two crates couldn't implement the same trait on a same type and rust would not know which implementation to use
+In order to implement a trait on a given type either the trait or the type must be defined on the current crate, without this rule two crates could implement the same trait on a same type and rust would not know which implementation to use
 
 There is a way to get around this rule by creating a wrapper type.
 
