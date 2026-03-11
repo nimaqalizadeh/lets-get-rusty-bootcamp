@@ -5,7 +5,8 @@ trait Park {
 trait Paint {
     fn paint(&self, color: String) {
         println!("painting object: {}", color);
-    }
+    
+}
 }
 
 struct VehicleInfo {
@@ -20,7 +21,7 @@ struct Car {
 
 impl Park for Car {
     fn park(&self) {
-        println!("parking car!");
+        println!("parking car with model {}!", self.info.model);
     }
 }
 
