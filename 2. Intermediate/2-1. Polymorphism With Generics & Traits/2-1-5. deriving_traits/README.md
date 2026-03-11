@@ -95,6 +95,15 @@ fn print_debug<T: Debug>(value: &T) {
 }
 ```
 
+Here's the full picture of what happens when you write `println!("{:?}", p)`:
+
+1. `#[derive(Debug)]` makes the compiler generate a `fmt` method for `Point`
+2. `println!` is already written as a generic function that accepts any `T: Debug`
+3. Since `Point` now implements `Debug`, it satisfies the trait bound
+4. `println!` calls `p.fmt(...)` — your generated method runs
+
+The standard library didn't know about `Point` when it was written. It just said: _"I'll work with anything that has a `fmt` method."_ Deriving `Debug` makes your type speak that language, so all existing code that requires `Debug` immediately works with it — without changing `println!` at all.
+
 Same with `PartialEq` — the `==` operator is syntax sugar for the trait method:
 
 ```rust
