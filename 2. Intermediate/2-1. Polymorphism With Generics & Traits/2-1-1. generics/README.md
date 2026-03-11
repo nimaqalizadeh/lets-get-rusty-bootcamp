@@ -1,7 +1,8 @@
 # Generics
 
-Generics allow to define structs, enums and functions with generic types
-that would be substituted for concrete types at compile time
+Generics allow you to define structs, enums, functions, methods, traits, trait
+implementations, and type aliases with generic types that are substituted for
+concrete types at compile time.
 
 ## Conventions for naming generics
 
@@ -98,6 +99,10 @@ Let's say you write a simple generic function that returns the value passed to i
 ```rust
 // 1. The generic function definition
 fn print_and_return<T: std::fmt::Debug>(value: T) -> T {
+    // T: std::fmt::Debug is a trait bound — it constrains T to only accept
+    // types that implement the Debug trait. This is required because {:?}
+    // (the debug formatter) calls Debug's fmt method. Without this bound,
+    // Rust wouldn't know that T supports {:?} and would refuse to compile.
     println!("{:?}", value);
     value
 }
@@ -161,5 +166,245 @@ Monomorphization applies to **all** generic constructs, not just functions:
 - **closures** — each closure with generic bounds gets its own monomorphized version
 
 The rule: **anywhere `T` appears and gets substituted with a concrete type, the compiler generates a dedicated copy**.
+
+## Generics in structs
+
+Declare `<T>` after the struct name; `T` can then be used as a field type:
+
+```rust
+struct Wrapper<T> {
+    value: T,
+}
+
+let w1 = Wrapper { value: 42 };        // T = i32
+let w2 = Wrapper { value: "hello" };   // T = &str
+```
+
+Multiple type parameters are separated by commas:
+
+```rust
+struct Pair<T, U> {
+    first: T,
+    second: U,
+}
+```
+
+## Generics in enums
+
+Same syntax as structs — declare `<T>` after the enum name and use it in
+variants:
+
+```rust
+enum MaybeTwo<A, B> {
+    First(A),
+    Second(B),
+    Neither,
+}
+```
+
+The standard library's `Option` and `Result` are the most common examples (see
+the [Generics in the standard library](#generics-in-the-standard-library)
+section above).
+
+## Generics in traits
+
+A trait can be generic over a type parameter, meaning each implementation can
+choose what that type is:
+
+```rust
+trait Converter<T> {
+    fn convert(&self) -> T;
+}
+
+struct Celsius(f64);
+
+impl Converter<f64> for Celsius {
+    fn convert(&self) -> f64 {
+        self.0
+    }
+}
+
+impl Converter<String> for Celsius {
+    fn convert(&self) -> String {
+        format!("{}°C", self.0)
+    }
+}
+```
+
+The same struct can implement the same trait multiple times, once per concrete `T`.
+
+## Generics in trait implementations
+
+When implementing a generic trait for a generic struct, declare all type
+parameters after `impl`:
+
+```rust
+trait Summary<T> {
+    fn summarize(&self) -> T;
+}
+
+struct Article<T> {
+    content: T,
+}
+
+impl<T: Clone> Summary<T> for Article<T> {
+    fn summarize(&self) -> T {
+        self.content.clone()
+    }
+}
+```
+
+## Generics in type aliases
+
+Type aliases can fix one or more parameters of a generic type to create a
+shorter, more specific name:
+
+```rust
+type StringResult<E> = Result<String, E>;
+type IoResult<T>     = Result<T, std::io::Error>;
+
+fn read_file(path: &str) -> IoResult<String> { ... }
+```
+
+This is common in the standard library — `std::io::Result<T>` is just
+`Result<T, std::io::Error>`.
+
+## Generics with `where` clauses
+
+When bounds become long or complex, move them to a `where` clause after the
+signature for readability:
+
+```rust
+// Inline bounds — hard to read
+fn print_pair<T: std::fmt::Display + Clone, U: std::fmt::Debug>(a: T, b: U) {
+    println!("{} {:?}", a.clone(), b);
+}
+
+// Equivalent with where — much cleaner
+fn print_pair<T, U>(a: T, b: U)
+where
+    T: std::fmt::Display + Clone,
+    U: std::fmt::Debug,
+{
+    println!("{} {:?}", a.clone(), b);
+}
+```
+
+`where` clauses also allow bounds on types that are not themselves a parameter
+— for example, bounding an associated type:
+
+```rust
+fn foo<I>(iter: I)
+where
+    I: Iterator,
+    I::Item: std::fmt::Display,
+{
+    for item in iter {
+        println!("{}", item);
+    }
+}
+```
+
+## Trait bounds
+
+A **trait bound** constrains a generic type parameter to only accept types that
+implement a specific trait. Without a bound, Rust knows nothing about `T` and
+won't let you call any methods on it.
+
+```rust
+// No bound — T can be anything, but you cannot use Display-specific features
+fn wrap<T>(value: T) -> Vec<T> {
+    vec![value]                        // fine — no methods called on T
+}
+
+// With a bound — T must implement Display, so {} works
+fn print<T: std::fmt::Display>(value: T) {
+    println!("{}", value);             // ok — Display is guaranteed
+}
+
+// Without a bound, trying to use Display causes a compile error:
+fn print_broken<T>(value: T) {
+    println!("{}", value);             // error: `T` doesn't implement `Display`
+}
+```
+
+### Multiple bounds
+
+Use `+` to require more than one trait:
+
+```rust
+fn print_and_clone<T: std::fmt::Display + Clone>(value: T) -> T {
+    println!("{}", value);
+    value.clone()
+}
+```
+
+### Bounds on generic structs and impl blocks
+
+Bounds can be placed on `impl` blocks to restrict which types get certain
+methods:
+
+```rust
+use std::fmt::Display;
+
+struct Wrapper<T> {
+    value: T,
+}
+
+// This method is only available when T implements Display
+impl<T: Display> Wrapper<T> {
+    fn show(&self) {
+        println!("{}", self.value);
+    }
+}
+```
+
+### Trait bounds vs. generic traits
+
+These are two different things that are easy to confuse:
+
+| Concept | What it means | Example |
+|---|---|---|
+| **Trait bound** | A constraint on a type parameter | `fn foo<T: Clone>(x: T)` |
+| **Generic trait** | The trait itself has a type parameter | `trait Converter<T> { ... }` |
+
+They can appear together — a bound can reference a generic trait:
+
+```rust
+// Generic trait
+trait Converter<T> {
+    fn convert(&self) -> T;
+}
+
+struct Celsius(f64);
+
+impl Converter<f64> for Celsius {
+    fn convert(&self) -> f64 { self.0 }
+}
+
+impl Converter<String> for Celsius {
+    fn convert(&self) -> String { format!("{}°C", self.0) }
+}
+
+// C: Converter<T> is a trait bound that uses the generic trait Converter<T>
+// T: Clone         is a plain trait bound
+fn convert_all<C, T>(items: &[C]) -> Vec<T>
+where
+    C: Converter<T>,   // bound using a generic trait
+    T: Clone,          // plain bound
+{
+    items.iter().map(|c| c.convert()).collect()
+}
+
+fn main() {
+    let readings = vec![Celsius(0.0), Celsius(100.0), Celsius(37.0)];
+
+    let temps: Vec<f64>   = convert_all(&readings); // C = Celsius, T = f64
+    let labels: Vec<String> = convert_all(&readings); // C = Celsius, T = String
+
+    println!("{:?}", temps);   // [0.0, 100.0, 37.0]
+    println!("{:?}", labels);  // ["0°C", "100°C", "37°C"]
+}
+```
 
 video: lets get rusty/039.Generics
