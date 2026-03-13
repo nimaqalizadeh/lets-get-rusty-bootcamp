@@ -23,6 +23,20 @@ struct Excerpt<'a> {
 
 The compiler records: "an `Excerpt<'a>` is only valid for the duration of `'a`." The lifetime becomes part of the struct's type — `Excerpt<'a>` and `Excerpt<'b>` are different types.
 
+A concrete consequence: you cannot mix instances with different lifetimes in the same collection. Once the `Vec` is created with `Excerpt<'a>`, it locks in `'a`. An excerpt tied to a shorter-lived reference is a different type and cannot be pushed in:
+
+```rust
+let s1 = String::from("long lived");
+let mut v = vec![Excerpt { text: &s1 }]; // Vec<Excerpt<'a>>, 'a = s1's lifetime
+
+{
+    let s2 = String::from("short lived");
+    v.push(Excerpt { text: &s2 }); // ERROR: s2 doesn't live long enough
+}                                  // s2 dropped here, but v is still alive
+
+println!("{}", v[0].text);
+```
+
 At instantiation, the compiler infers `'a` from the concrete reference passed in. From that point, the type itself carries the constraint — the caller never needs to inspect the fields. The compiler simply enforces that `Excerpt<'a>` is not used after `'a` expires, the same way it enforces that a `&'a str` is not used after `'a` expires.
 
 ## Multiple lifetime parameters
@@ -76,10 +90,25 @@ impl<'a> Excerpt<'a> {
     }
 }
 
-// explicit lifetime: both inputs and output share 'a
-// the returned reference lives as long as the shorter of x and y
-fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
-    if x.len() > y.len() { x } else { y }
+fn main() {
+    let novel = String::from("Call me Ishmael. Some years ago...");
+    let excerpt = Excerpt { text: &novel[..16] };
+    let result = excerpt.announce("Breaking news");
+    println!("{}", result); // "Call me Ishmael"
+}
+```
+
+Since the return is tied to `self`'s lifetime (`'a`), `result` becomes invalid the moment `excerpt` is dropped — even if the underlying data (`novel`) is still alive:
+
+```rust
+fn main() {
+    let novel = String::from("Call me Ishmael. Some years ago...");
+    let result;
+    {
+        let excerpt = Excerpt { text: &novel[..16] };
+        result = excerpt.announce("Breaking news");
+    }   // excerpt dropped here — 'a ends
+    println!("{}", result);  // ERROR: result is tied to excerpt's lifetime ('a), which expired
 }
 ```
 
@@ -96,30 +125,119 @@ let excerpt;
 println!("{}", excerpt.text);  // ERROR: excerpt used after 'a expired
 ```
 
-**Case 2: function returns a dangling reference**
+**Case 2: mixing struct instances with different lifetimes in a collection**
 
 ```rust
-fn broken<'a>() -> &'a str {
+let s1 = String::from("long lived");
+let mut v = vec![Excerpt { text: &s1 }]; // Vec<Excerpt<'a>>, 'a = s1's lifetime
+
+{
+    let s2 = String::from("short lived");
+    v.push(Excerpt { text: &s2 }); // ERROR: s2 doesn't live long enough
+}   // s2 dropped here, but v is still alive
+
+println!("{}", v[0].text);
+```
+
+Once the `Vec` locks in `'a`, any excerpt tied to a shorter lifetime is a different type and cannot be pushed in.
+
+**Case 3: function returning a struct that holds a reference to a local variable**
+
+```rust
+fn make_excerpt() -> Excerpt {
     let local = String::from("created inside");
-    &local  // ERROR: local is dropped at end of function, 'a cannot be satisfied
+    Excerpt { text: &local }  // ERROR: local is dropped at end of function
 }
 ```
 
-The compiler rejects this because no caller-supplied `'a` can cover a reference to a local variable that is destroyed before the function returns.
+The struct tries to carry a reference out of the function, but the data it points to is destroyed when the function returns.
 
-**Case 3: `longest` used beyond the shorter lifetime**
+## Enum lifetimes
+
+Enums work exactly like structs — if a variant holds a reference, the enum needs a lifetime parameter:
 
 ```rust
-let result;
-let s1 = String::from("long string");
-{
-    let s2 = String::from("xyz");
-    result = longest(&s1, &s2);  // 'a unified to shorter of s1 and s2 = s2's lifetime
-}   // s2 dropped here
-println!("{}", result);  // ERROR: result is tied to 'a which ended with s2
+enum Message<'a> {
+    Text(&'a str),
+    Number(i32),  // no reference — no lifetime needed for this variant
+}
 ```
 
-Even though `s1` is still alive and might be the one returned, the compiler does not analyze the body of `longest` at the call site — it only sees the signature, which says the return is tied to `'a`, the shorter of the two inputs.
+The lifetime `'a` is attached to the enum type, not to individual variants. So even if only one variant holds a reference, the entire enum instance is constrained by `'a`:
+
+```rust
+fn main() {
+    let result;
+    {
+        let s = String::from("hello");
+        let msg = Message::Text(&s);  // 'a = s's lifetime
+        result = msg;
+    }   // s dropped here — 'a ends
+    println!("{:?}", result);  // ERROR: result (Message<'a>) used after 'a expired
+}
+```
+
+## Lifetime bounds on generic types (`T: 'a`)
+
+`T: 'a` means "T must not contain any references shorter than `'a`". When you write `&'a T`, this bound is implied automatically — the compiler knows T must outlive `'a` for the reference to be valid. You only need to write `T: 'a` explicitly when T is stored as an **owned field** (not `&'a T`), but you still have a separate `'a` lifetime in the struct that T's inner references must respect:
+
+```rust
+struct Cache<'a, T: 'a> {
+    data: T,        // T is owned — compiler cannot infer T: 'a without the explicit bound
+    label: &'a str, // separate reference with lifetime 'a
+}
+```
+
+Without `T: 'a`, the compiler has no way to know that `data`'s inner references must outlive `'a`. With it, the struct is safe: both `label` and any references inside `T` are guaranteed to live at least as long as `'a`.
+
+```rust
+let label = String::from("my cache");
+let data = String::from("data");          // String owns its data — fine
+let c = Cache { data, label: &label };
+
+// would fail:
+let c;
+{
+    let label = String::from("label");
+    c = Cache { data: String::from("x"), label: &label }; // ERROR: label dropped too early
+}
+println!("{}", c.label);
+```
+
+## `T: 'static` vs `&'static T`
+
+These look similar but mean different things:
+
+**`&'static T`** — `T` is a type parameter, `'static` is just the lifetime of the reference — same as `&'a T` but with `'a = 'static`. Since `'static` is never shorter than any other lifetime, the reference never expires:
+
+```rust
+fn needs_static<T: std::fmt::Debug>(s: &'static T) {
+    println!("{:?}", s);
+}
+
+needs_static(&42);            // fine — integer literals are 'static
+
+let s = String::from("hello");
+needs_static(&s);             // ERROR: &s is tied to s's lifetime, not 'static
+                              // s will be dropped at end of scope
+```
+
+**`T: 'static`** — T contains no references shorter than `'static`. T itself does not need to live forever — it just must not borrow from anything that could expire:
+
+```rust
+fn store<T: 'static>(value: T) {
+    // T can be an owned String, i32, Vec<u8>, etc.
+    // T cannot be &'a str where 'a is not 'static
+}
+
+store(String::from("hello")); // fine — String owns its data, no short-lived refs
+store(42);                    // fine — i32 has no references at all
+
+let s = String::from("world");
+store(&s);                    // ERROR: &s is tied to s's lifetime, not 'static
+```
+
+The key distinction: `&'static T` is about *where the data lives*. `T: 'static` is about *whether T contains any short-lived borrows*.
 
 Rust compiler follow three lifetime elision rules, after applying these three rules if the lifetime is still ambiguous, it requires explicit lifetime annotation:
 
