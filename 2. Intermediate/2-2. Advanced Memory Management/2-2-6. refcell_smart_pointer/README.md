@@ -332,3 +332,45 @@ match cell.try_borrow_mut() {
 |---|---|
 | `borrow()` / `borrow_mut()` | Panics at runtime |
 | `try_borrow()` / `try_borrow_mut()` | Returns `Err`, no panic |
+
+## Why the Name "RefCell"
+
+The name comes from two words:
+
+- **`Ref`** — short for *reference*. `RefCell` works by giving you smart reference guards (`Ref<T>` and `RefMut<T>`) instead of direct access, so it can track active borrows at runtime.
+- **`Cell`** — a general Rust term for types that provide **interior mutability** (the ability to mutate through a shared reference). `Cell<T>` is the simpler sibling — it works by copying values in/out instead of references.
+
+So `RefCell` = "a Cell that works via references (with runtime borrow tracking)".
+
+**The Cell family in Rust:**
+
+| Type | How it works | For types that are |
+|---|---|---|
+| `Cell<T>` | Copy values in/out | `Copy` |
+| `RefCell<T>` | Borrow references with runtime checks | Any `T` |
+| `Mutex<T>` | Like `RefCell` but thread-safe | Any `T + Send` |
+
+## Single-Threaded Only
+
+`RefCell` is **single-threaded only**. It is not `Send` or `Sync`, so the compiler will refuse to share it across threads:
+
+```rust
+use std::cell::RefCell;
+use std::thread;
+
+let cell = RefCell::new(5);
+thread::spawn(move || {
+    *cell.borrow_mut() += 1; // COMPILE ERROR: RefCell cannot be sent between threads
+});
+```
+
+**Why?** `RefCell` tracks borrows using a simple integer counter — no locking mechanism. In a multi-threaded context, two threads could modify that counter simultaneously, causing a data race.
+
+**Use `Mutex<T>` instead for multi-threading:**
+
+| | `RefCell<T>` | `Mutex<T>` |
+|---|---|---|
+| Thread-safe | No | Yes |
+| Borrow tracking | Runtime counter | OS lock |
+| Overhead | Very low | Higher |
+| Panic on violation | Yes | Poisoned lock |
