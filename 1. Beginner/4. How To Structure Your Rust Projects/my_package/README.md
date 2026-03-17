@@ -36,7 +36,15 @@
     4. `lib.rs` and/or `main.rs` + additional binaries in `src/bin/` — any number of binary crates
     5. Any combination of the above + module files (e.g. `utils.rs`) in `src/` without a `main` function — these are modules, not crates
 - **Crates**: A tree of modules that produces a library or executable.
-- **Modules**: Let you control the organization, scope, and privacy. Modules can be defined in five ways:
+- **Modules**: Let you control the organization, scope, and privacy.
+  - Organize code for readability and reuse
+  - Control scope and privacy
+  - Contain items (functions, structs, enums, traits, etc.)
+  - Explicitly defined (using the `mod` keyword)
+    - Not mapped to the file system
+    - Flexibility & straightforward conditional compilation
+
+  Modules can be defined in five ways:
 
   1. **Inline in `main.rs` or `lib.rs`** — define the module directly in the file:
 
