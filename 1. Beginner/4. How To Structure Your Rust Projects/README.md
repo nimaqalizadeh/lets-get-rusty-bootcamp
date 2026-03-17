@@ -44,6 +44,8 @@
     - Not mapped to the file system
     - Flexibility & straightforward conditional compilation
 
+  > **Note on `mod` vs `import`:** Coming from Python, `mod` declarations might look similar to an `import` statement. However, something else is really going on. Instead of importing code, `mod` is merely declaring the existence of a submodule and is required so that the Rust compiler can actually find code in other files. You only need to specify `mod` in one place (usually `main.rs` or `lib.rs`) and nowhere else in the program. If you have a C background, `mod` declarations are closer to declarations that one would put in a Makefile.
+
   **Module resolution order** — when you write `mod foo;`, Rust looks for the module in these locations (mutually exclusive, not a fallback chain):
 
   1. **Inline** — `mod foo { ... }` block in the current file
