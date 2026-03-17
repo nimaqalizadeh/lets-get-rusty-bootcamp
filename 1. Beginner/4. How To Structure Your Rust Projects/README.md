@@ -46,6 +46,16 @@
 
   > **Note on `mod` vs `import`:** Coming from Python, `mod` declarations might look similar to an `import` statement. However, something else is really going on. Instead of importing code, `mod` is merely declaring the existence of a submodule and is required so that the Rust compiler can actually find code in other files. You only need to specify `mod` in one place (usually `main.rs` or `lib.rs`) and nowhere else in the program. If you have a C background, `mod` declarations are closer to declarations that one would put in a Makefile.
 
+  > **`mod` means the file is part of the build:** The Rust compiler only compiles files that are part of the module tree. If a file is never declared with `mod`, the compiler completely ignores it — even if it contains errors. For example, if you create a file `example.rs` with a type error:
+  >
+  > ```rust
+  > fn bad_fn(x: i32) -> i32 {
+  >     x * 2.5  // type error: can't multiply i32 by f64
+  > }
+  > ```
+  >
+  > and you never add `mod example;` in `main.rs` or `lib.rs`, the entire project will compile without any errors. The compiler doesn't know that file exists. Only once you add `mod example;` does the compiler include `example.rs` in the build, and then you'll get the type error. This is what makes `mod` different from Python's `import` — it's not about using code, it's about telling the compiler "this file is part of the build." Without the `mod` declaration, the `.rs` file is just a text file sitting in your directory as far as `rustc` is concerned.
+
   **Module resolution order** — when you write `mod foo;`, Rust looks for the module in these locations (mutually exclusive, not a fallback chain):
 
   1. **Inline** — `mod foo { ... }` block in the current file
@@ -204,7 +214,7 @@ auth_service/
     ├── auth.rs              # module: auth logic (has submodules)
     ├── auth/                # directory for auth submodules (new style)
     │   ├── jwt.rs           # submodule: JWT token handling
-    │   └── password.rs      # submodule: password hashing
+    │   └── password.rs      # submodule: password hashingg
     └── bin/
         ├── migrate.rs       # separate binary: database migrations
         └── generate_key.rs  # separate binary: generate secret keys
@@ -249,7 +259,7 @@ impl AppConfig {
 use crate::config::AppConfig;
 
 pub struct DbPool {
-    pub url: String,
+    pub url: String,,
 }
 
 impl DbPool {
