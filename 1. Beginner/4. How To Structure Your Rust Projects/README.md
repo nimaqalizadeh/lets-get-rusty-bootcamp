@@ -44,6 +44,14 @@
     - Not mapped to the file system
     - Flexibility & straightforward conditional compilation
 
+  **Module resolution order** — when you write `mod foo;`, Rust looks for the module in these locations (mutually exclusive, not a fallback chain):
+
+  1. **Inline** — `mod foo { ... }` block in the current file
+  2. **`foo.rs`** — sibling file (new style, Rust 2018+)
+  3. **`foo/mod.rs`** — directory with `mod.rs` (old style)
+
+  If both `foo.rs` and `foo/mod.rs` exist, the compiler **errors** — you must use one or the other.
+
   Modules can be defined in five ways:
 
   1. **Inline in `main.rs` or `lib.rs`** — define the module directly in the file:
