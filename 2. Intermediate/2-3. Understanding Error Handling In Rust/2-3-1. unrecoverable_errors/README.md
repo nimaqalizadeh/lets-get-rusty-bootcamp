@@ -1,6 +1,6 @@
 # Panic
 
-A good statement from Davi Beazley about error handling: 
+A good insight from Davi Beazley about error handling: 
 I you know that something is going to fail, coding will be a lot easier if you account for it early on as supposed to later on. 
 
 ```rust
