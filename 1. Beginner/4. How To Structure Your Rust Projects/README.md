@@ -736,3 +736,6 @@ pub(crate) fn public_in_crate() {}      // accessible only within this crate
 pub(super) fn public_to_parent() {}     // accessible only to the parent module
 fn private() {}                         // accessible only within this module
 ```
+https://matklad.github.io/2021/09/05/Rust100k.html
+
+https://corrode.dev/blog/prototyping/#fr-3-1:~:text=main.rs%20is%20your%20best%20friend%20while%20prototyping.
