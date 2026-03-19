@@ -599,3 +599,5 @@ match check_age(170) {
 ```
 
 A common pattern is to use **both**: `thiserror` to define your error types and `anyhow` in your application code that consumes them. Start with `anyhow` during prototyping, then introduce `thiserror` for parts of your codebase that need structured error handling.
+
+https://corrode.dev/blog/prototyping/
