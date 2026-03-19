@@ -1,7 +1,6 @@
 # Additional notes
 
-Read source code from a file
-
+You can define the unit tuple as a type and use it as a function's return type — useful when you're in the early stages of a project and designing the overall structure
 ```rust
 // This is a type-alias, but for now I've just set it to
 // "nothing". Note: () is the Rust "unit" type. It's kind of
