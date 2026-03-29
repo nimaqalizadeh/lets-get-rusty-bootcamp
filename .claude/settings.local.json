@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo init:*)",
+      "Bash(cargo check:*)",
+      "Bash(grep -rn 'match ' '/Users/darya/Desktop/github/lets-get-rusty-bootcamp/1. Beginner' --include=*.rs)"
+    ]
+  }
+}

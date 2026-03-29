@@ -1,0 +1,647 @@
+// ========================================================
+// Match Expression Exercise — Comprehensive Practice
+// ========================================================
+//
+// Fix every function/method marked with `todo!()`.
+// Each section focuses on a different match pattern.
+// Run with: cargo test
+// When all tests pass, you're done!
+
+// --------------------------------------------------------
+// PART 1: Basic enum matching
+// --------------------------------------------------------
+
+#[derive(Debug, PartialEq)]
+enum Direction {
+    North,
+    South,
+    East,
+    West,
+}
+
+/// Return degrees on a compass for each direction.
+fn direction_to_degrees(dir: &Direction) -> u16 {
+    match dir {
+        Direction::North => 0,
+        Direction::South => 180,
+        Direction::East => 90,
+        Direction::West => 270,
+    }
+}
+
+// --------------------------------------------------------
+// PART 2: Enum with data
+// --------------------------------------------------------
+
+#[derive(Debug, PartialEq)]
+enum Shape {
+    Circle(f64),             // radius
+    Rectangle(f64, f64),     // width, height
+    Triangle(f64, f64, f64), // three sides
+}
+
+/// Compute the perimeter of any shape.
+fn perimeter(shape: &Shape) -> f64 {
+    // TODO: match on shape, extract inner values, compute perimeter
+    // Circle perimeter = 2 * π * r  (use std::f64::consts::PI)
+    // Rectangle perimeter = 2 * (w + h)
+    // Triangle perimeter = a + b + c
+    use std::f64::consts::PI;
+
+    match shape {
+        Shape::Circle(r) => 2.0 * PI * r,
+        Shape::Rectangle(w, h) => 2.0 * (w + h),
+        Shape::Triangle(a, b, c) => a + b + c,
+    }
+}
+
+// --------------------------------------------------------
+// PART 3: Enum with named fields (struct variant)
+// --------------------------------------------------------
+
+#[derive(Debug, PartialEq)]
+enum Vehicle {
+    Car { brand: String, horsepower: u32 },
+    Bicycle { gear_count: u8 },
+    Boat { length_meters: f64, has_motor: bool },
+}
+
+/// Return a short description of the vehicle.
+fn describe_vehicle(v: &Vehicle) -> String {
+    // TODO: match on v and return:
+    //   Car             -> "{brand} with {horsepower}hp"
+    //   Bicycle         -> "Bicycle with {gear_count} gears"
+    //   Boat w/ motor   -> "Motorboat ({length_meters}m)"
+    //   Boat w/o motor  -> "Sailboat ({length_meters}m)"
+    match v {
+        Vehicle::Car { brand, horsepower } => format!("{} with {}hp", brand, horsepower),
+        Vehicle::Bicycle { gear_count } => format!("Bicycle with {} gears", gear_count),
+        Vehicle::Boat {
+            length_meters,
+            has_motor,
+        } => {
+            if has_motor == &true {
+                format!("Motorboat ({}m)", length_meters)
+            } else {
+                format!("Sailboat ({}m)", length_meters)
+            }
+        }
+    }
+}
+
+// --------------------------------------------------------
+// PART 4: Match with guards
+// --------------------------------------------------------
+
+/// Classify a temperature (Celsius) into a category.
+fn classify_temp(temp: i32) -> &'static str {
+    // TODO: use match with guards to return:
+    //   temp < 0       -> "freezing"
+    //   0..=15         -> "cold"
+    //   16..=25        -> "pleasant"
+    //   26..=35        -> "hot"
+    //   _  (36+)       -> "extreme"
+    match temp {
+        ..=-1 => "freezing",
+        0..=15 => "cold",
+        16..=25 => "pleasant",
+        26..=35 => "hot",
+        _ => "extreme",
+    }
+}
+
+// --------------------------------------------------------
+// PART 5: Matching on Option<T>
+// --------------------------------------------------------
+
+/// Double the value inside an Option, return None if None.
+fn double_option(val: Option<i32>) -> Option<i32> {
+    match val {
+        Some(v) => Some(2 * v),
+        None => None,
+    }
+}
+
+/// Return the first element of a slice, or None.
+fn first_element(items: &[String]) -> Option<&String> {
+    // TODO: use match or if-let on items.first()
+    // Hint: items.first() already returns Option<&String>
+    match items.first() {
+        Some(s) => Some(s),
+        None => None,
+    }
+}
+
+// --------------------------------------------------------
+// PART 6: Matching on Result<T, E>
+// --------------------------------------------------------
+
+#[derive(Debug, PartialEq)]
+enum MathError {
+    DivisionByZero,
+    NegativeSquareRoot,
+}
+
+fn safe_divide(a: f64, b: f64) -> Result<f64, MathError> {
+    if b == 0.0 {
+        Err(MathError::DivisionByZero)
+    } else {
+        Ok(a / b)
+    }
+}
+
+fn safe_sqrt(x: f64) -> Result<f64, MathError> {
+    if x < 0.0 {
+        Err(MathError::NegativeSquareRoot)
+    } else {
+        Ok(x.sqrt())
+    }
+}
+
+/// Compute: sqrt(a / b). Return appropriate error on failure.
+fn sqrt_of_division(a: f64, b: f64) -> Result<f64, MathError> {
+    // TODO: call safe_divide, then match on the result.
+    //       If Ok, call safe_sqrt on the quotient and return its result.
+    //       If Err, propagate the error.
+    let result = safe_divide(a, b);
+    match result {
+        Ok(input_to_divide) => match safe_sqrt(input_to_divide) {
+            Ok(sqrt_result) => Ok(sqrt_result),
+            Err(e) => Err(e),
+        },
+        Err(e) => Err(e),
+    }
+}
+
+// --------------------------------------------------------
+// PART 7: Struct + method returning Result, matched externally
+// --------------------------------------------------------
+
+#[derive(Debug)]
+struct BankAccount {
+    owner: String,
+    balance: f64,
+}
+
+#[derive(Debug, PartialEq)]
+enum BankError {
+    InsufficientFunds,
+    InvalidAmount,
+}
+
+impl BankAccount {
+    fn new(owner: &str, balance: f64) -> Self {
+        BankAccount {
+            owner: owner.to_string(),
+            balance,
+        }
+    }
+
+    /// Withdraw money. Returns new balance on success.
+    fn withdraw(&mut self, amount: f64) -> Result<f64, BankError> {
+        // TODO:
+        //   amount <= 0        -> Err(InvalidAmount)
+        //   amount > balance   -> Err(InsufficientFunds)
+        //   otherwise          -> subtract and return Ok(new balance)
+
+        match amount {
+            _ if amount <= 0.0 => Err(BankError::InvalidAmount),
+            _ if amount > self.balance => Err(BankError::InsufficientFunds),
+            _ => {
+                self.balance -= amount;
+                Ok(self.balance)
+            }
+        }
+    }
+
+    /// Deposit money. Returns new balance on success.
+    fn deposit(&mut self, amount: f64) -> Result<f64, BankError> {
+        // TODO:
+        //   amount <= 0  -> Err(InvalidAmount)
+        //   otherwise    -> add and return Ok(new balance)
+        match amount {
+            _ if amount <= 0.0 => Err(BankError::InvalidAmount),
+            _ => {
+                self.balance += amount;
+                Ok(self.balance)
+            }
+        }
+    }
+}
+
+/// Process a list of transactions and return final balance or first error.
+/// Positive amounts are deposits, negative amounts are withdrawals.
+fn process_transactions(account: &mut BankAccount, transactions: &[f64]) -> Result<f64, BankError> {
+    // TODO: iterate over transactions.
+    //   If amount > 0 -> deposit(amount)
+    //   If amount < 0 -> withdraw(amount.abs())
+    //   If amount == 0 -> return Err(InvalidAmount)
+    //   Use match on each result. On Err, return early.
+    //   Return Ok(account.balance) at the end.
+    for &amount in transactions.iter() {
+        match amount {
+            amount if amount > 0.0 => match account.deposit(amount) {
+                Ok(_) => {}
+                Err(e) => return Err(e),
+            },
+            amount if amount < 0.0 => {
+                account.withdraw(amount.abs())?;
+            }
+            _ => return Err(BankError::InvalidAmount),
+        };
+    }
+    Ok(account.balance)
+}
+
+// --------------------------------------------------------
+// PART 8: Nested enums (recursive)
+// --------------------------------------------------------
+
+#[derive(Debug, PartialEq)]
+enum Expr {
+    Num(f64),
+    Add(Box<Expr>, Box<Expr>),
+    Mul(Box<Expr>, Box<Expr>),
+    Neg(Box<Expr>),
+}
+
+/// Evaluate a simple expression tree.
+fn eval(expr: &Expr) -> f64 {
+    // TODO: recursively match on expr
+    //   Num(n)     -> n
+    //   Add(a, b)  -> eval(a) + eval(b)
+    //   Mul(a, b)  -> eval(a) * eval(b)
+    //   Neg(e)     -> -eval(e)
+    match expr {
+        Expr::Num(n) => *n,
+        Expr::Add(a, b) => eval(a) + eval(b),
+        Expr::Mul(a, b) => eval(a) * eval(b),
+        Expr::Neg(e) => -eval(e),
+    }
+}
+
+// --------------------------------------------------------
+// PART 9: if-let, let-else, while-let
+// --------------------------------------------------------
+
+/// Using `if let`, return the circle's radius if shape is a Circle, else None.
+fn extract_radius(shape: &Shape) -> Option<f64> {
+    // TODO: use `if let` (not a full match)
+    if let Shape::Circle(radius) = shape {
+        Some(*radius)
+    } else {
+        None
+    }
+}
+
+/// Using `let-else`, return the horsepower of a Car.
+/// If not a Car, return 0.
+fn car_horsepower(v: &Vehicle) -> u32 {
+    // TODO: use `let ... else { return 0; };` syntax
+    let Vehicle::Car { brand, horsepower } = v else {
+        return 0;
+    };
+    *horsepower
+}
+
+/// Using `while let`, pop elements from a Vec<Option<i32>>,
+/// sum only the Some values, stop at the first None.
+fn sum_until_none(mut stack: Vec<Option<i32>>) -> i32 {
+    // TODO: use `while let` to pop and sum.
+    // Hint: stack.pop() returns Option<Option<i32>>.
+    //       You want to keep going while pop gives Some(Some(value)).
+    let mut sum = 0;
+    while let Some(option_value) = stack.pop() {
+        if let Some(num) = option_value {
+            sum += num;
+        } else {
+            return sum;
+        }
+    }
+    sum
+}
+
+// --------------------------------------------------------
+// PART 10: Matching tuples and combining patterns
+// --------------------------------------------------------
+
+/// Given two Options, return:
+///   Both Some -> Some(a + b)
+///   One Some  -> that Some value
+///   Both None -> None
+fn add_options(a: Option<i32>, b: Option<i32>) -> Option<i32> {
+    // TODO: match on the tuple (a, b)
+    match (a, b) {
+        (Some(a), Some (b)) => Some (a + b),
+        (Some(a), None) | (None, Some(a)) => Some(a),
+        (None, None) => None
+}
+}
+
+/// Classify a coordinate into a quadrant string.
+fn quadrant(x: f64, y: f64) -> &'static str {
+    // TODO: match on (x, y) with guards:
+    //   both positive -> "Q1"
+    //   x < 0, y > 0  -> "Q2"
+    //   both negative -> "Q3"
+    //   x > 0, y < 0  -> "Q4"
+    //   _             -> "origin/axis"
+    match (x, y) {
+        (x, y) if x > 0.0 && y > 0.0 => "Q1",
+        (x, y) if x < 0.0 && y > 0.0 => "Q2",
+        (x, y) if x < 0.0 && y < 0.0 => "Q3",
+        (x, y) if x > 0.0 && y < 0.0 => "Q4",
+        _ => "origin/axis",
+} 
+    
+}
+
+// --------------------------------------------------------
+// PART 11: Matching with @ bindings
+// --------------------------------------------------------
+
+/// Categorize a number using @ bindings.
+fn categorize_number(n: i32) -> &'static str {
+    // TODO: use match with @ bindings:
+    //   _n @ 1..=9         -> "single digit"
+    //   _n @ 10..=99       -> "double digit"
+    //   _n @ 100..=999     -> "triple digit"
+    //   _n @ 1000..        -> "large"
+    //   _                  -> "non-positive"
+    // (the @ binding isn't strictly needed here, but practice the syntax)
+    match n {
+      _n @ 1..=9 => "single digit",
+      _n @ 10..=99 => "double digit",
+      _n @ 100..=999 => "triple digit",
+      _n @ 1000.. => "large",
+      _ => "non-positive",
+    }
+}
+
+/// Find the first item in the list that is Some and greater than threshold.
+fn find_above_threshold(items: &[Option<i32>], threshold: i32) -> Option<i32> {
+    // TODO: iterate over items, use match or if-let with guards
+    //       return the first value that is Some(v) where v > threshold
+    //       return None if nothing found
+    let items_iter = items.iter();
+    
+}
+
+// --------------------------------------------------------
+// PART 12: matches! macro
+// --------------------------------------------------------
+
+/// Return true if direction is North or South (vertical).
+fn is_vertical(dir: &Direction) -> bool {
+    // TODO: use the matches!() macro
+    todo!()
+}
+
+/// Return true if the shape is a Circle with radius > 5.0
+fn is_large_circle(shape: &Shape) -> bool {
+    // TODO: use the matches!() macro with a guard
+    todo!()
+}
+
+fn main() {
+    println!("Run `cargo test` to check your solutions!");
+}
+
+// ========================================================
+// TESTS — do not modify
+// ========================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Part 1
+    #[test]
+    fn test_direction_to_degrees() {
+        assert_eq!(direction_to_degrees(&Direction::North), 0);
+        assert_eq!(direction_to_degrees(&Direction::East), 90);
+        assert_eq!(direction_to_degrees(&Direction::South), 180);
+        assert_eq!(direction_to_degrees(&Direction::West), 270);
+    }
+
+    // Part 2
+    #[test]
+    fn test_perimeter() {
+        let circle = Shape::Circle(5.0);
+        assert!((perimeter(&circle) - 2.0 * std::f64::consts::PI * 5.0).abs() < 1e-9);
+
+        let rect = Shape::Rectangle(3.0, 4.0);
+        assert!((perimeter(&rect) - 14.0).abs() < 1e-9);
+
+        let tri = Shape::Triangle(3.0, 4.0, 5.0);
+        assert!((perimeter(&tri) - 12.0).abs() < 1e-9);
+    }
+
+    // Part 3
+    #[test]
+    fn test_describe_vehicle() {
+        let car = Vehicle::Car {
+            brand: "Tesla".to_string(),
+            horsepower: 450,
+        };
+        assert_eq!(describe_vehicle(&car), "Tesla with 450hp");
+
+        let bike = Vehicle::Bicycle { gear_count: 21 };
+        assert_eq!(describe_vehicle(&bike), "Bicycle with 21 gears");
+
+        let motorboat = Vehicle::Boat {
+            length_meters: 8.5,
+            has_motor: true,
+        };
+        assert_eq!(describe_vehicle(&motorboat), "Motorboat (8.5m)");
+
+        let sailboat = Vehicle::Boat {
+            length_meters: 12.0,
+            has_motor: false,
+        };
+        assert_eq!(describe_vehicle(&sailboat), "Sailboat (12m)");
+    }
+
+    // Part 4
+    #[test]
+    fn test_classify_temp() {
+        assert_eq!(classify_temp(-10), "freezing");
+        assert_eq!(classify_temp(0), "cold");
+        assert_eq!(classify_temp(10), "cold");
+        assert_eq!(classify_temp(20), "pleasant");
+        assert_eq!(classify_temp(30), "hot");
+        assert_eq!(classify_temp(40), "extreme");
+    }
+
+    // Part 5
+    #[test]
+    fn test_double_option() {
+        assert_eq!(double_option(Some(5)), Some(10));
+        assert_eq!(double_option(None), None);
+        assert_eq!(double_option(Some(-3)), Some(-6));
+    }
+
+    #[test]
+    fn test_first_element() {
+        let items = vec!["hello".to_string(), "world".to_string()];
+        assert_eq!(first_element(&items), Some(&"hello".to_string()));
+
+        let empty: Vec<String> = vec![];
+        assert_eq!(first_element(&empty), None);
+    }
+
+    // Part 6
+    #[test]
+    fn test_sqrt_of_division() {
+        let result = sqrt_of_division(16.0, 4.0);
+        assert!((result.unwrap() - 2.0).abs() < 1e-9);
+
+        assert_eq!(sqrt_of_division(1.0, 0.0), Err(MathError::DivisionByZero));
+        assert_eq!(
+            sqrt_of_division(-16.0, 1.0),
+            Err(MathError::NegativeSquareRoot)
+        );
+    }
+
+    // Part 7
+    #[test]
+    fn test_bank_withdraw() {
+        let mut acc = BankAccount::new("Alice", 100.0);
+        assert_eq!(acc.withdraw(30.0), Ok(70.0));
+        assert_eq!(acc.withdraw(0.0), Err(BankError::InvalidAmount));
+        assert_eq!(acc.withdraw(200.0), Err(BankError::InsufficientFunds));
+    }
+
+    #[test]
+    fn test_bank_deposit() {
+        let mut acc = BankAccount::new("Bob", 50.0);
+        assert_eq!(acc.deposit(25.0), Ok(75.0));
+        assert_eq!(acc.deposit(-10.0), Err(BankError::InvalidAmount));
+    }
+
+    #[test]
+    fn test_process_transactions() {
+        let mut acc = BankAccount::new("Carol", 100.0);
+        let txns = vec![50.0, -30.0, 20.0, -10.0];
+        assert_eq!(process_transactions(&mut acc, &txns), Ok(130.0));
+
+        let mut acc2 = BankAccount::new("Dave", 50.0);
+        let txns2 = vec![10.0, -100.0, 5.0];
+        assert_eq!(
+            process_transactions(&mut acc2, &txns2),
+            Err(BankError::InsufficientFunds)
+        );
+
+        let mut acc3 = BankAccount::new("Eve", 50.0);
+        let txns3 = vec![10.0, 0.0, 5.0];
+        assert_eq!(
+            process_transactions(&mut acc3, &txns3),
+            Err(BankError::InvalidAmount)
+        );
+    }
+
+    // Part 8
+    #[test]
+    fn test_eval() {
+        // 3 + 4 = 7
+        let e1 = Expr::Add(Box::new(Expr::Num(3.0)), Box::new(Expr::Num(4.0)));
+        assert!((eval(&e1) - 7.0).abs() < 1e-9);
+
+        // (2 + 3) * -(4) = -20
+        let e2 = Expr::Mul(
+            Box::new(Expr::Add(
+                Box::new(Expr::Num(2.0)),
+                Box::new(Expr::Num(3.0)),
+            )),
+            Box::new(Expr::Neg(Box::new(Expr::Num(4.0)))),
+        );
+        assert!((eval(&e2) - (-20.0)).abs() < 1e-9);
+    }
+
+    // Part 9
+    #[test]
+    fn test_extract_radius() {
+        assert_eq!(extract_radius(&Shape::Circle(7.5)), Some(7.5));
+        assert_eq!(extract_radius(&Shape::Rectangle(1.0, 2.0)), None);
+    }
+
+    #[test]
+    fn test_car_horsepower() {
+        let car = Vehicle::Car {
+            brand: "BMW".to_string(),
+            horsepower: 300,
+        };
+        assert_eq!(car_horsepower(&car), 300);
+
+        let bike = Vehicle::Bicycle { gear_count: 7 };
+        assert_eq!(car_horsepower(&bike), 0);
+    }
+
+    #[test]
+    fn test_sum_until_none() {
+        // pop from end: Some(20), Some(10) -> sum=30, then None -> stop
+        assert_eq!(
+            sum_until_none(vec![Some(1), Some(2), None, Some(10), Some(20)]),
+            30
+        );
+        // pop from end: Some(5) -> sum=5, then None -> stop
+        assert_eq!(sum_until_none(vec![None, Some(5)]), 5);
+        // pop from end: None -> stop immediately
+        assert_eq!(sum_until_none(vec![None]), 0);
+        // pop from end: Some(3), Some(2), Some(1) -> sum=6, then vec empty -> stop
+        assert_eq!(sum_until_none(vec![Some(1), Some(2), Some(3)]), 6);
+    }
+
+    // Part 10
+    #[test]
+    fn test_add_options() {
+        assert_eq!(add_options(Some(3), Some(4)), Some(7));
+        assert_eq!(add_options(Some(5), None), Some(5));
+        assert_eq!(add_options(None, Some(2)), Some(2));
+        assert_eq!(add_options(None, None), None);
+    }
+
+    #[test]
+    fn test_quadrant() {
+        assert_eq!(quadrant(1.0, 1.0), "Q1");
+        assert_eq!(quadrant(-1.0, 1.0), "Q2");
+        assert_eq!(quadrant(-1.0, -1.0), "Q3");
+        assert_eq!(quadrant(1.0, -1.0), "Q4");
+        assert_eq!(quadrant(0.0, 5.0), "origin/axis");
+    }
+
+    // Part 11
+    #[test]
+    fn test_categorize_number() {
+        assert_eq!(categorize_number(5), "single digit");
+        assert_eq!(categorize_number(42), "double digit");
+        assert_eq!(categorize_number(256), "triple digit");
+        assert_eq!(categorize_number(10000), "large");
+        assert_eq!(categorize_number(0), "non-positive");
+        assert_eq!(categorize_number(-5), "non-positive");
+    }
+
+    #[test]
+    fn test_find_above_threshold() {
+        let items = vec![None, Some(3), None, Some(10), Some(7)];
+        assert_eq!(find_above_threshold(&items, 5), Some(10));
+        assert_eq!(find_above_threshold(&items, 0), Some(3));
+        assert_eq!(find_above_threshold(&items, 100), None);
+    }
+
+    // Part 12
+    #[test]
+    fn test_is_vertical() {
+        assert!(is_vertical(&Direction::North));
+        assert!(is_vertical(&Direction::South));
+        assert!(!is_vertical(&Direction::East));
+        assert!(!is_vertical(&Direction::West));
+    }
+
+    #[test]
+    fn test_is_large_circle() {
+        assert!(is_large_circle(&Shape::Circle(10.0)));
+        assert!(!is_large_circle(&Shape::Circle(3.0)));
+        assert!(!is_large_circle(&Shape::Rectangle(10.0, 10.0)));
+    }
+}
