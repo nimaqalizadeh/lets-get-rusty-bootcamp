@@ -20,6 +20,7 @@ mod impl_trait;
 
 use crate::{impl_trait:: {notify, notify_complex, notify_complex_other_form, notify_complex_with_different_types, notify_generic}, math_utils::AveragedCollection, trait_definition::{NewsArticle, Summarizable, Tweet}
 };
+use std::vec;
 
 fn main() {
     // ********** math_utils 
@@ -97,7 +98,19 @@ fn main() {
     println!("{}", notify_complex_with_different_types(&tweet, 
                                                      &article));
 
-    println!("********** end of impl_trait **********" );
+    println!("********** end of trait bound **********" );
+
+    println!();
+
+    println!("********** trait bound - Dynamic Dispatch **********" );
+
+    let v: Vec<Box<&dyn Summarizable>> = vec![Box::new(&article), Box::new(&tweet)];
+    
+    for item in &v {
+        println!("{}", item.summary())
+    }
+
+    println!("********** end of trait bound - Dynamic Dispatch **********" );
 
     println!();
 
