@@ -76,7 +76,7 @@ Not all traits can be made into trait objects. For a trait to be used with dyn T
 
 3. Not have generic type parameters.
 
-## A deep dive to object safety
+## A deep dive into object safety
 
 ### What problem does `dyn Trait` solve?
 
@@ -151,6 +151,55 @@ function(data_ptr);            // call it with the data pointer as `&self`
 ```
 
 **Key insight:** the only thing dynamic dispatch knows about the object is a `*const ()` (the data pointer) plus the vtable. It has completely forgotten whether it was a `Dog`, `Cat`, or `Cow`.
+
+### Two common points of confusion
+
+**"But `Dog`'s size is known at compile time — why do we need a data pointer?"**
+
+You're right that `Dog` itself is sized. The subtlety is that **`dyn Animal` is a different type than `Dog`**, and it's the `dyn Animal` side that's unsized. Once you coerce a `Dog` into `Box<dyn Animal>`, the compiler is no longer allowed to assume it's a `Dog`:
+
+```rust
+let a: Box<dyn Animal> = Box::new(Dog);  // Dog is known here...
+// ...but from this line onward, `a` has type Box<dyn Animal>.
+// The compiler has forgotten it was a Dog.
+
+for item in &animals {       // item: &Box<dyn Animal>
+    item.speak();            // "what type is behind this?" is unknowable
+}
+```
+
+Inside the loop, different elements of the `Vec` might hold a `Dog` (0 bytes), a `Cat` (0 bytes), or an `Elephant` (500 bytes). They have **different sizes**, so the `Box` can't store them inline — it must store them indirectly and carry the vtable so it can figure out what to do with them at runtime. The data pointer isn't there because `Dog`'s size is unknown; it's there because `dyn Animal` is a type that *refuses to commit* to any one concrete type.
+
+**"The diagram shows `speak: Dog::speak` — what about `Cat` and `Cow`?"**
+
+The diagram depicts **one specific instance** — a `Box<dyn Animal>` that happens to wrap a `Dog`. But the compiler actually generates **one vtable per `(type, trait)` pair**, baked into the binary as static read-only data:
+
+```
+<Dog as Animal> vtable      <Cat as Animal> vtable      <Cow as Animal> vtable
+┌──────────────────┐        ┌──────────────────┐        ┌──────────────────┐
+│ drop_in_place    │        │ drop_in_place    │        │ drop_in_place    │
+│ size: 0          │        │ size: 0          │        │ size: 0          │
+│ align: 1         │        │ align: 1         │        │ align: 1         │
+│ speak: Dog::speak│        │ speak: Cat::speak│        │ speak: Cow::speak│
+└──────────────────┘        └──────────────────┘        └──────────────────┘
+```
+
+When you write `Box::new(Dog)` and coerce it into `Box<dyn Animal>`, the fat pointer gets stamped with the address of the `<Dog as Animal>` vtable. `Box::new(Cat)` gets stamped with `<Cat as Animal>`'s vtable, and so on. Each fat pointer carries its *own* vtable address:
+
+```
+Vec<Box<dyn Animal>>
+┌─────────────────────┬─────────────────────┬─────────────────────┐
+│ data→Dog | vt→Dog's │ data→Cat | vt→Cat's │ data→Cow | vt→Cow's │
+└─────────────────────┴─────────────────────┴─────────────────────┘
+```
+
+So when the loop executes `a.speak()`, the generated code is literally:
+
+```rust
+(a.vtable_ptr.speak)(a.data_ptr)
+```
+
+It blindly follows whichever vtable pointer *that specific element* carries. The first element follows `Dog`'s vtable and ends up calling `Dog::speak`; the second follows `Cat`'s and calls `Cat::speak`. The loop body has no idea which is which — **the vtable pointer itself is the selector**. That's the whole trick of dynamic dispatch: every trait object carries, as runtime data, the answer to "which implementation should I use?"
 
 With that model in mind, every object-safety rule follows naturally from one question:
 
@@ -274,6 +323,7 @@ trait Animal: Sized {   // ← supertrait bound
 `Sized` means "the size is known at compile time." Every concrete type like `Dog` or `Cat` is `Sized`. But `dyn Animal` is **unsized** — its size depends on the hidden concrete type, which is erased.
 
 So:
+
 - `Sized` says: "only types with a known compile-time size can implement me"
 - `dyn Animal` is a type whose size is NOT known
 - Therefore `dyn Animal` cannot even exist as a type that "implements Animal"
@@ -356,14 +406,14 @@ The `where Self: Sized` clause says "this method is only valid when `Self` has a
 
 ### Cheat sheet
 
-| Rule violation                       | Why it breaks dynamic dispatch                                |
-|--------------------------------------|---------------------------------------------------------------|
-| `fn method(self)` (by value)         | Caller can't move an unknown-sized value onto the stack       |
-| `fn method() -> Self`                | Caller can't receive an unknown-sized return value            |
-| `fn method<T>(&self, x: T)`          | Vtable can't have infinite monomorphized slots                |
-| `trait X: Sized`                     | `dyn X` is unsized, so it can't satisfy the bound             |
-| `const FOO: u32;` in trait           | Vtables hold methods, not constants                           |
-| `Self` in a parameter (e.g. `&Self`) | No way to enforce "both are the same concrete type" at runtime|
+| Rule violation                       | Why it breaks dynamic dispatch                                 |
+| ------------------------------------ | -------------------------------------------------------------- |
+| `fn method(self)` (by value)         | Caller can't move an unknown-sized value onto the stack        |
+| `fn method() -> Self`                | Caller can't receive an unknown-sized return value             |
+| `fn method<T>(&self, x: T)`          | Vtable can't have infinite monomorphized slots                 |
+| `trait X: Sized`                     | `dyn X` is unsized, so it can't satisfy the bound              |
+| `const FOO: u32;` in trait           | Vtables hold methods, not constants                            |
+| `Self` in a parameter (e.g. `&Self`) | No way to enforce "both are the same concrete type" at runtime |
 
 **The unifying principle:**
 
