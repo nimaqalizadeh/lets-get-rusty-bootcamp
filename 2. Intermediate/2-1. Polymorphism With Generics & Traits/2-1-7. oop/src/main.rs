@@ -18,9 +18,7 @@ mod math_utils;
 mod trait_definition;
 mod impl_trait;
 
-use crate::{math_utils::AveragedCollection, 
-    trait_definition::{NewsArticle, Summarizable, Tweet},
-    impl_trait::notify,
+use crate::{impl_trait:: {notify, notify_complex, notify_complex_other_form, notify_complex_with_different_types, notify_generic}, math_utils::AveragedCollection, trait_definition::{NewsArticle, Summarizable, Tweet}
 };
 
 fn main() {
@@ -78,6 +76,26 @@ fn main() {
     
     println!("{}", notify(&article));
     println!("{}", notify(&tweet));
+
+    println!("********** trait bound **********" );
+    println!("{}", notify_generic(&tweet));
+    println!("{}", notify_generic(&article));
+
+    // pub fn notify_complex<T>(item1: &T, item2: &T) -> String
+    // The function signature needs both item1 and item2 be the
+    // same type. So cann't use it as 
+    // notify_complex(&article, &tweet) although both have implemented
+    // the Summarizable. 
+    println!("{}", notify_complex(&article, &article));
+    println!("{}", notify_complex_other_form(&article, &article));
+    
+    //pub fn notify_complex_with_different_types(
+    // item1: &impl Summarizable,
+    // item2: &impl Summarizable,
+    // ) -> String {
+    // with this signature can have different types
+    println!("{}", notify_complex_with_different_types(&tweet, 
+                                                     &article));
 
     println!("********** end of impl_trait **********" );
 

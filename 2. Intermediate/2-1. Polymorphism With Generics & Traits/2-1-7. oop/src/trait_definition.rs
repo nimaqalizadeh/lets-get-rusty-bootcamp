@@ -6,6 +6,7 @@ pub trait Summarizable {
     }
 }
 
+#[derive(Debug)]
 pub struct NewsArticle {
     pub headline: String,
     pub location: String,
@@ -13,6 +14,7 @@ pub struct NewsArticle {
     pub content: String,
 }
 
+#[derive(Debug)]
 pub struct Tweet {
     pub username: String,
     pub content: String,
