@@ -16,8 +16,12 @@
 // as its own child, which is circular and meaningless.
 mod math_utils;
 mod trait_definition;
+mod impl_trait;
 
-use crate::{math_utils::AveragedCollection, trait_definition::{NewsArticle, Summarizable, Tweet}};
+use crate::{math_utils::AveragedCollection, 
+    trait_definition::{NewsArticle, Summarizable, Tweet},
+    impl_trait::notify,
+};
 
 fn main() {
     // ********** math_utils 
@@ -64,8 +68,19 @@ fn main() {
     println!("Tweet default summary: {}", tweet.default_summary());
 
 
-    println!("********** beginning of trait_definition **********" );
+    println!("********** end of trait_definition **********" );
     // ********** end of trait definition 
 
     println!();
+
+    // ********** impl trait (polimorphism - monomorphization)
+    println!("********** beginning of impl_trait **********" );
+    
+    println!("{}", notify(&article));
+    println!("{}", notify(&tweet));
+
+    println!("********** end of impl_trait **********" );
+
+    println!();
+
 }
