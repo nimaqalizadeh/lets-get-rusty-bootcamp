@@ -11,6 +11,7 @@ let execution = "100".parse::<u32>();
 ```
 
 Walk me through it:
+
 1. What is the `::<u32>` syntax called, and what is its purpose?
 2. Why does Rust force you to write `::<u32>` instead of just `<u32>`?
 3. What is the actual type of `execution`? Is it a `u32`?
@@ -43,11 +44,13 @@ let execution: Result<u32, _> = "100".parse();
 Because of **parsing ambiguity**. When the compiler is reading an expression and sees `<`, it doesn't know if you mean "start of a generic type" or "less-than operator."
 
 Consider:
+
 ```rust
 let x = foo<A, B>(c);
 ```
 
 Without a special rule, this could mean:
+
 - Call generic function `foo::<A, B>` with argument `c`, OR
 - Evaluate `(foo < A), (B > (c))` — two boolean comparisons
 
@@ -275,7 +278,7 @@ let v: Vec<u8> = Default::default();                         // equivalent
 
 #### 8. Fully Qualified Syntax (Related but Distinct)
 
-When multiple traits define the same method name, you disambiguate with `<T as Trait>::method()`. **There is no annotation-based equivalent** — variable annotations can guide types but cannot pick *which trait's* method to call.
+When multiple traits define the same method name, you disambiguate with `<T as Trait>::method()`. **There is no annotation-based equivalent** — variable annotations can guide types but cannot pick _which trait's_ method to call.
 
 ```rust
 let id = <i32 as Default>::default();
@@ -294,7 +297,7 @@ let b = <S as B>::name();   // "B"  — no annotation form possible
 
 #### 9. Const Generics
 
-Newer Rust APIs use turbofish to specify **values** (not just types) as generic parameters. Variable annotations *can* sometimes substitute because the const value is encoded in the return type:
+Newer Rust APIs use turbofish to specify **values** (not just types) as generic parameters. Variable annotations _can_ sometimes substitute because the const value is encoded in the return type:
 
 ```rust
 // array_chunks — the chunk size 2 only appears in the return type's array length
