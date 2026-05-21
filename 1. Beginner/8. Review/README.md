@@ -1,26 +1,40 @@
 ## Write cargo main features (at least 9 command)
 
+(cargo --list)
+(cargo help)
 Chapter 1, pages 15-19
 
-## What is shadowing? in which situations shadowing is userful?
+## What is shadowing? in which situations shadowing is useful?
 
-Chapter 2, page 29
+Chapter 2, page 29-30
+Shadowing is useful in situations where you want to perform a transformation on a value and
+maintain immutability. Each shadowed variable is a new variable, allowing you to apply trans-
+formations step by step without modifying the original value.
 
-## Write two examples for the case of using tuple and struct
+```rust
+fn main() {
+    let text = "  hello, world  ";
+    let text = text.trim();           // &str — whitespace removed
+    let text = text.to_uppercase();   // String — converted to uppercase
+    let text = text.replace(",", ""); // String — punctuation removed
 
-One of the most common and idiomatic uses for tuples in Rust is to return multiple values from
-a function. This is often cleaner and more lightweight than defining a new struct just for a single
-function’s return type.
+    println!("{text}"); // "HELLO WORLD"
+}
+```
+
+## Write two examples for the case of using tuple and struct according to this explanation:
+
+# One of the most common and idiomatic uses for tuples in Rust is to return multiple values from a function. This is often cleaner and more lightweight than defining a new struct just for a single function’s return type.
 
 Chapter 2, page 33
 
-## Write example for each of these types
+## Write example for each of these types, use destructuring to access the elements. Try to print their elements with for-loop. Try to get slice from each of them.
 
-tuple, array, slice, String, &str (immutable reference to a string slice),
+tuple, array, slice, String (use chars() to iterate in a for loop), &str (immutable reference to a string slice. `str` is an string slice (sequence of UTF-8) resides somewhere in memory),
 
 Chapter 2, pages 32-35
 
-## Write example for these three types of structs (Classic, tuple, unit)
+## Write example for these three types of structs (Classic, tuple, unit. Unit structs are useful for creating types that don’t need to store data but still need to implement certain traits.)
 
 Chapter 2, pages 36-37
 
@@ -28,15 +42,15 @@ Chapter 2, pages 36-37
 
 Chapter 2, pages 39-40
 
-## Write a method for an enum
+## Write a method for an enum. Try to make constructor for each of the enum variants (try with implementing From trait so can use both `from` and `into` functions)
 
 Chapter 2, page 42
 
-## Write three example for fucntion and pass parameters with value, with reference, with mut reference
+## Write three example of fucntions and pass parameters with value, with reference, with mut reference
 
 Chapter 2, pages 45-46
 
-## Find a function that takes ownership and a function that return ownership
+## Write a function that takes ownership and a function that return ownership
 
 Chapter 2, pages 47
 
