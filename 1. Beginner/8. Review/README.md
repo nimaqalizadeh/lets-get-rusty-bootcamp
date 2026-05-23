@@ -93,3 +93,43 @@ Chapter 2, pages 61
 ## function can return no value, and can have no parameter; write example for each cases
 
 Chapter 3, page 68-69
+
+## Write closures that capture the variables from the scope environment in three variants: 1. immutable, 2.mutable reference (try to modify the environment variable value) 3. taking the ownership
+
+Note:
+If you are taking ownership of the value and want to modify it, the `mut` goes on the variable: `|mut x: String|`
+
+If you are taking a reference to a value and want to modify it, the `mut` is part of the type: `|x: &mut String|`
+
+Two scenarios for moving:
+
+1. Using move keyword
+
+```rust
+fn main() {
+    let name = String::from("Nima");
+
+    let n = move || name;
+    n();
+    println!("{name}");
+}
+```
+
+2. Moving happens by value passing (Implicit Move in Closures)
+
+```rust
+fn main() {
+    let name = String::from("Nima");
+
+    let n = |x: String| x;
+    n(name);
+    //borrowed of move value
+    // println!("{name}");
+}
+```
+
+Chapter 3, page 76-78
+
+## Write example for these closure traits: `Fn`, `FnOnce`, `FnMut`
+
+Note: Don't confuse the
