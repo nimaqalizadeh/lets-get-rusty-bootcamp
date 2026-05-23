@@ -132,4 +132,12 @@ Chapter 3, page 76-78
 
 ## Write example for these closure traits: `Fn`, `FnOnce`, `FnMut`
 
-Note: Don't confuse the
+Note: Don't confuse the difference between capturing a variable and taking an argument in closures.
+The way a closure captures its environment determines which of three special traits it imple-
+ments: FnOnce, FnMut, or Fn.
+
+Chapter 3, page 78
+
+## Given this vector `let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];` sum the square of elements that are greater than 3 and even (a chain of using iter, filter, map and sum)
+
+Chapter 3, page 79
