@@ -1,3 +1,7 @@
+# The Rust Programming Handbook
+
+# Chapter 2
+
 ## Write cargo main features (at least 9 command)
 
 Note:
@@ -90,6 +94,8 @@ Chapter 2, pages 60
 
 Chapter 2, pages 61
 
+# Chapter 3
+
 ## function can return no value, and can have no parameter; write example for each cases
 
 Chapter 3, page 68-69
@@ -141,3 +147,118 @@ Chapter 3, page 78
 ## Given this vector `let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];` sum the square of elements that are greater than 3 and even (a chain of using iter, filter, map and sum)
 
 Chapter 3, page 79
+
+# Chapter 4
+
+Use Alice Ryhl insight:
+
+**The chain:** borrowing creates a reference, and every reference carries a lifetime. So lifetimes only matter when references are involved.
+
+1. **Borrowing → Reference:** A _reference_ is a compile-time-only pointer to a value — no runtime checks. Creating one is called _borrowing_.
+
+2. **Reference → Lifetime:** Every reference has a **lifetime** — a window of time where the reference is allowed to be used (typically the body of a function or just a few lines). The compiler makes sure the reference is never used outside that window.
+
+3. **The borrow checker** enforces two rules over these references:
+   - (1) A reference cannot outlive the scope it was borrowed from — if borrowed from a local variable, its lifetime is bounded by that variable's scope.
+   - (2) At any moment, you can have either **one mutable borrow** or **any number of immutable borrows** — never both at the same time.
+
+## Write example for Ownership principals: Each value has a single owner and Only one owner at a time. When the owner goes out of scope, the value is dropped
+
+Chapter 4, page 88
+
+## Write example for types that manage resources on the heap (String, Vex, Box) that Rust’s default behavior upon assignment is to move ownership
+
+Note: move = shallow copy of the pointer, length, and capacity
+
+Chapter 4, page 89
+
+## What is the exeption of moving in the case of assignment? (Copy trait)
+
+Chapter 4, page 90
+
+## What is the solution if you want copy the type instead of default move? (Explicit duplication: The Clone trait (Deep copy))
+
+Note: Unlike Copy, which is an implicit, bit-for-bit copy, clone() is explicit
+
+1. Move = Shallow Copy + Invalidation -> copies the pointer, the length, and the capacity + immediately invalidates the original variable
+
+2. Copy = Shallow Copy (No Invalidation) -> Because they don't have any pointers to heap memory, doing a shallow copy is perfectly safe! Therefore, Rust does the exact same shallow copy as a move, but does not invalidate the original variable
+
+3. Clone = Deep Copy (Usually) -> It does the shallow copy of the stack data, but then it also requests brand new memory on the heap and copies all the actual text or data over.
+
+Exception: There are a few advanced exceptions, like `Rc` or `Arc`, where `.clone()` just increments a counter instead of doing a deep copy, but for standard data, Clone means deep copy
+
+**stack-only is shallow, stack+heap is deep**
+
+Chapter 4, page 92
+
+## What is the difference between a reference and pointer in Rust?
+
+Note: Reference is governed by Rust’s strict compile-time borrow checker. This means that while a reference allows you to access data without taking full responsibility for it, the compiler guarantees that the reference will always be valid and will not lead to dangerous situations such as data races
+
+In the case of having a dangling pointer (allocate memory, create a pointer to it, and then free the memory), you can commit two major action with it:
+
+1. **Double-free bugs** -> pass the dangling pointer to `free(dangling_ptr)`
+
+2. **Use after free errors** -> read or write data to the target of pointer (`println!{*dangling_ptr}`)
+
+Rust’s compiler prevents this entire class of bugs at compile time through its analysis of lifetimes.
+
+**Data races** -> Multi-threading
+
+Chapter 4, page 100-103
+
+## Common patterns and idioms in Rust: Ownership,borrowing, and references. Write example for each case:
+
+### 1. Borrowing for read-only access (write an struct with String fields and a function that just borrow the object. Then write another struct that just have primitive fields)
+
+Note: There is a very common misconception that wether struct is on heap or stack?
+
+The struct itself lives on the stack in both cases. The types of the fields inside the struct do not change where the struct is placed in memory. What changes is whether the struct points to the heap or stack.
+
+### 2. Mutable borrowing for modification
+
+### 3. Returning references with borrowing
+
+Note: Returning references from functions while maintaining ownership of the caller is a powerful pattern. This allows you to give controlled access to parts of your data without transferring
+ownership or needing to copy data.
+
+The Aha moment:
+
+```rust
+fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+// Lifetime annotation '<'a>' ensures that the returned reference
+// lives at least as long as the shortest of the input references.
+if x.len() > y.len() {
+x
+} else {
+y
+    }
+}
+```
+
+The `longest` function says, I give two reference from to `str` in a scope and return a reference to one of them. The compiler concern is that the returened reference should be valid at that scope.
+
+## Now try to write a code that uses above `longest` function and cause compliler shout at you :)
+
+Chapter 4, pages 106-108
+
+## Write example for these pitfalls:
+
+### 1. Forgetting ownership has moved
+
+### 2. Multiple mutable references
+
+### 3. Dangling references
+
+Note: The fundamental (avoid dangling references) rule is that you cannot return a reference to a value that was created inside the function. The safest and most common approach is to return an owned value (such as `String`, `Vec<T>`, etc.)
+
+### 4. Unnecessary clones
+
+Note: you should only call .clone() when you have a clear
+and deliberate need for a separate, independent copy of the data and are willing to accept the
+potential performance cost
+
+Chapter 4, pages 109-111
+
+# Chapter 5

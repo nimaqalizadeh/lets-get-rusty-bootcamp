@@ -115,9 +115,9 @@ Here `hello` has the longest possible lifetime (`'static`), but `print_str` only
 
 **Q: How does Rust's memory model compare to C++ for someone used to manual memory management?** _(Part 2)_
 
-        **A:** If you're coming from C++, you're used to things being cleaned up in the destructor — and that's the same in Rust. Where Rust innovates is in ownership and the borrow checker. C++ has ownership too in the form of `unique_ptr`: it's unique, it's deallocated when it goes out of scope. Rust uses the same strategy. **But the question C++ can't answer at compile time is: if you have a regular raw pointer to that unique thing, how can you be sure the pointer is still valid? Rust answers this with lifetimes**.
+    **A:** If you're coming from C++, you're used to things being cleaned up in the destructor — and that's the same in Rust. Where Rust innovates is in ownership and the borrow checker. C++ has ownership too in the form of `unique_ptr`: it's unique, it's deallocated when it goes out of scope. Rust uses the same strategy. **But the question C++ can't answer at compile time is: if you have a regular raw pointer to that unique thing, how can you be sure the pointer is still valid? Rust answers this with lifetimes**.
 
-        ---
+---
 
 **Q: What is the ownership model in Rust?** _(Part 1)_
 
