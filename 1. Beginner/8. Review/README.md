@@ -262,3 +262,25 @@ potential performance cost
 Chapter 4, pages 109-111
 
 # Chapter 5
+
+## Write example for these cases:
+
+### 1. Field initialization shorthand for structs
+
+### 2. Reading field values
+
+### 3. Modifying struct fields
+
+### 4. Updating struct instances (use .. to indicate that the remaining fields should be copied from another instance. if a field’s type does not implement `Copy` (such as `String`), ownership of that field’s data is moved)
+
+Note: The reason types like `String` don't have copy trait and should transfer ownership:
+Types that manage resources, such as `String`, which owns data on the heap, do not implement `Copy`. A simple bitwise copy of String would result in two variables pointing to and believing they
+own the same heap memory, which would lead to a “double-free” error when both are dropped. For these non-Copy fields, the struct update syntax performs a move, transferring ownership.
+
+Chapter 5, pages 117-125
+
+## Methods for structs. Write example for each case
+
+• &self: Borrows the instance immutably (read-only access)
+• &mut self: Borrows the instance mutably (read-write access)
+• self: Takes ownership of the instance (consumes it)
