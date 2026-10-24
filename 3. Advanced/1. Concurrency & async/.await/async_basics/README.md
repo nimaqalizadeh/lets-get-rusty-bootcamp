@@ -347,7 +347,7 @@ Here is what the video notes about Promises, Futures, and the examples used:
 ### What He Says About "Promise"
 
 - **Non-Blocking Guarantees [00:05:42]:** The speaker explains that in async programming, when you call a time-consuming function (like `fry_eggs`), the function does not block your progress and does not return the final result right away.
-- **A Promise of an Egg [00:06:26]:** Because the eggs might not be ready for another 5 minutes, the system gives you a **"Promise"** (پرامیس / قول). It is a guarantee that the output will eventually be prepared and delivered to you later.
+- **A Promise of an Egg [00:06:26]:** Because the eggs might not be ready for another 5 minutes, the system gives you a **"Promise"**. It is a guarantee that the output will eventually be prepared and delivered to you later.
 
 ### What He Says About "Future"
 
