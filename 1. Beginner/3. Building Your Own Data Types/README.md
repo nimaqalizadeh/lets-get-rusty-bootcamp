@@ -326,3 +326,26 @@ let is_vertical = matches!(dir, Direction::North | Direction::South);
 // With a guard:
 let is_big_circle = matches!(shape, Shape::Circle(r) if r > 5.0);
 ```
+
+Calling an instance with methods or called in methods:
+
+```rust
+struct Rectangle {
+    width: i32,
+    height: i32,
+}
+
+impl Rectangle {
+    fn area(&self) -> i32 {
+        self.width * self.height
+    }
+}
+fn main() {
+    let rect = Rectangle {
+        width: 4,
+        height: 5,
+    };
+    println!("Area: {}", rect.area());
+    println!("Area: {}", Rectangle::area(&rect));
+}
+```
