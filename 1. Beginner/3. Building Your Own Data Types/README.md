@@ -96,6 +96,43 @@ match count {
 
 Without `@`, you'd need a range pattern and a separate variable. `@` combines both: "match this range AND give me the value."
 
+#### Alternatives without `@`
+
+**1. Match the range, then use the original variable**
+
+```rust
+match count {
+    1..=9 => println!("{count} is single digit"),
+    10..=99 => println!("{count} is double digit"),
+    100.. => println!("{count} is large"),
+    _ => println!("non-positive"),
+}
+```
+
+This only works because `count` is already a variable you can name. When you match on an expression instead, such as `match get_count()` or `match user.age`, there's no name to refer back to. You'd have to store the value in a variable first.
+
+**2. Bind with a plain name, then test it in a match guard**
+
+```rust
+match count {
+    n if (1..=9).contains(&n) => println!("{n} is single digit"),
+    n if (10..=99).contains(&n) => println!("{n} is double digit"),
+    n if n >= 100 => println!("{n} is large"),
+    _ => println!("non-positive"),
+}
+```
+
+A plain name like `n` matches everything, so the `if` guard does the range check. This works with any expression, but it's longer, and the compiler doesn't look inside guards when it checks whether the match covers every case.
+
+**Why `@` is nicer:** it does both jobs in one pattern. The range check is part of the pattern itself, and you get a name for the value even when the value came from a function call or a nested field:
+
+```rust
+match get_count() {
+    n @ 1..=9 => println!("{n} is single digit"),
+    // ...
+}
+```
+
 ### Destructuring Enums
 
 Pull apart enum variants to access inner data:

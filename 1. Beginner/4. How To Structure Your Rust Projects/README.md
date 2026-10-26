@@ -20,6 +20,7 @@
   - [Where Does the Source Code Go?](#where-does-the-source-code-go)
 - [Module Keywords & Path Syntax](#module-keywords--path-syntax)
   - [Examples in Context](#examples-in-context)
+- [درسنامه فارسی](#درسنامه-فارسی)
 
 ## Basic Components
 
@@ -739,3 +740,294 @@ fn private() {}                         // accessible only within this module
 https://matklad.github.io/2021/09/05/Rust100k.html
 
 https://corrode.dev/blog/prototyping/#fr-3-1:~:text=main.rs%20is%20your%20best%20friend%20while%20prototyping.
+
+---
+
+## درسنامه فارسی
+
+### ۱. پکیج (package)
+
+هر پوشه‌ای که فایل `Cargo.toml` داشته باشد یک **package** است. هر package حداقل یک crate دارد.
+
+### ۲. کریت (crate)
+
+کریت واحدی است که کامپایل می‌شود. طبق قرارداد پیش‌فرض Cargo، این فایل‌ها **ریشه‌ی یک crate** هستند:
+
+| فایل | نوع crate |
+|---|---|
+| فایل `src/lib.rs` | کتابخانه (library)، حداکثر یکی در هر package |
+| فایل `src/main.rs` | اجرایی (binary) |
+| هر فایل در `src/bin/` | اجرایی، هر فایل یک crate جدا |
+
+یک crate فقط همان فایل ریشه نیست. **فایل ریشه و همه‌ی moduleهایی که به آن وصل شده‌اند** روی هم یک crate هستند.
+
+وقتی package فایل `lib.rs` دارد، یعنی **یک library crate دارد**. اگر `main.rs` یا `src/bin/` هم داشته باشد، binary crate هم دارد. مثلاً پروژه‌ی `auth_service` در این داکیومنت چهار crate دارد:
+
+```
+src/lib.rs               ← library crate
+src/main.rs              ← binary crate
+src/bin/migrate.rs       ← binary crate
+src/bin/generate_key.rs  ← binary crate
+```
+
+### ۳. ماژول (module)
+
+هر فایل `.rs` دیگری در `src` (به‌جز `src/bin/`) یک **module** است، مثل `config.rs`، `db.rs`، `auth.rs` یا `auth/jwt.rs`.
+
+برای اینکه یک module کامپایل شود و جزو crate باشد، **والدش** باید آن را با `mod` وصل کند:
+
+```rust
+// src/lib.rs   ← والد
+pub mod auth;
+```
+
+```rust
+// src/auth.rs  ← خود module، اینجا هیچ mod auth نوشته نمی‌شود
+pub struct AuthService { /* ... */ }
+```
+
+نکته‌ها:
+
+- کلمه‌ی `mod` را والد می‌نویسد، نه خود فایل module.
+- والد همیشه `lib.rs` یا `main.rs` نیست. یک module هم می‌تواند زیرmodule داشته باشد، مثلاً `auth.rs` با `pub mod jwt;` فایل `auth/jwt.rs` را وصل می‌کند.
+- فایلی که به هیچ والدی وصل نشده اصلاً کامپایل نمی‌شود.
+- عبارت `mod auth;` بدون `pub` هم کافی است تا module **داخل همان crate** قابل استفاده باشد. کلمه‌ی `pub` فقط برای دسترسی از **بیرون** crate لازم است.
+
+### ۴. پنج روش ساختن module
+
+**روش ۱: درون‌خطی (inline)**، یعنی module را داخل همان فایل با آکولاد تعریف می‌کنی:
+
+```rust
+// src/main.rs
+mod auth {
+    pub fn login() { println!("Logging in..."); }
+}
+
+fn main() {
+    auth::login();   // ✅ با اینکه mod auth خصوصی است
+}
+```
+
+ماژول خصوصی فقط «داخل خودش» قابل دسترسی نیست. **والدش** (فایلی که `mod` را نوشته) و moduleهای دیگر داخل همان والد هم به آن دسترسی دارند. ولی چیزهای داخلش (مثل `login`) باید `pub` باشند.
+
+**روش ۲: یک فایل جدا.** ساده‌ترین روش است:
+
+```
+src/
+├── main.rs      ← mod auth;
+└── auth.rs      ← pub fn login() {...}
+```
+
+**روش ۳: پوشه به‌اضافه‌ی `mod.rs` (روش قدیمی، قبل از ۲۰۱۸).** فایل `auth/mod.rs` دقیقاً همان نقش `auth.rs` را دارد، فقط داخل پوشه است:
+
+```
+src/
+├── main.rs        ← mod auth;
+└── auth/
+    ├── mod.rs     ← pub mod jwt;
+    └── jwt.rs
+```
+
+ایرادش این است که در پروژه‌ی بزرگ ده‌ها فایل با اسم `mod.rs` داری و در editor نمی‌شود آن‌ها را از هم تشخیص داد.
+
+**روش ۴: فایل و پوشه‌ی هم‌نام (روش جدید و پیشنهادی).** فایل `auth.rs` والد است و زیرmoduleها در پوشه‌ی `auth/` قرار می‌گیرند:
+
+```
+src/
+├── main.rs        ← mod auth;
+├── auth.rs        ← pub mod jwt;
+└── auth/
+    └── jwt.rs
+```
+
+روش ۳ و ۴ نتیجه‌ی یکسانی دارند. فقط جای فایل والد فرق دارد:
+
+| روش | فایل والد module به نام `auth` |
+|---|---|
+| روش قدیمی | فایل `src/auth/mod.rs` |
+| روش جدید | فایل `src/auth.rs` |
+
+**روش ۵: ویژگی `#[path]`.** هر فایلی را با هر اسمی به یک module وصل می‌کند، حتی بیرون از مسیر معمول:
+
+```rust
+#[path = "my_custom_folder/authentication.rs"]
+mod auth;
+```
+
+این روش کار می‌کند ولی توصیه نمی‌شود، چون دیگر از روی اسم فایل نمی‌شود فهمید module کجاست.
+
+**ترتیب جست‌وجو وجود ندارد.** کامپایلر این روش‌ها را یکی پس از دیگری امتحان نمی‌کند. **شکل نوشتن تو** تعیین می‌کند کدام روش است:
+
+| چیزی که می‌نویسی | کامپایلر چه می‌کند |
+|---|---|
+| عبارت `mod auth { ... }` | کد را از همین آکولاد برمی‌دارد و دنبال فایل نمی‌گردد |
+| عبارت `mod auth;` | هم‌زمان دنبال `auth.rs` و `auth/mod.rs` می‌گردد؛ دقیقاً یکی باید باشد |
+| عبارت `#[path = "..."] mod auth;` | فقط همان مسیر داده‌شده را باز می‌کند |
+
+اگر هم `auth.rs` و هم `auth/mod.rs` وجود داشته باشند، هیچ‌کدام برنده نمی‌شود و خطا می‌گیری:
+
+```
+error[E0761]: file for module `auth` found at both "auth.rs" and "auth/mod.rs"
+```
+
+اگر هم inline و هم فایل را با یک اسم بنویسی، باز خطا می‌گیری، چون اسم دو بار تعریف شده:
+
+```rust
+mod auth { pub fn login() {} }
+mod auth;   // ❌ error[E0428]: the name `auth` is defined multiple times
+```
+
+### ۵. شروع مسیر: `crate::` یا نام package؟
+
+معنی `crate::` به این بستگی دارد که **کد را در کدام crate می‌نویسی**:
+
+- عبارت `crate::` یعنی «ریشه‌ی **همین** crate» (خودم).
+- نام package (مثلاً `auth_service::`) یعنی «library crate این پروژه» (آن یکی).
+
+| کد را کجا می‌نویسی | عبارت `crate::` اشاره می‌کند به |
+|---|---|
+| در `lib.rs` یا moduleهایش | فایل `lib.rs` |
+| در `main.rs` یا moduleهایی که خودش وصل کرده | فایل `main.rs` |
+| در `src/bin/migrate.rs` | فایل `src/bin/migrate.rs` |
+
+در این مثال، `config` و `auth` هر دو در `lib.rs` وصل شده‌اند. پس داخل `auth.rs` می‌نویسیم:
+
+```rust
+// src/auth.rs  (جزو library)
+use crate::config::AppConfig;
+```
+
+ولی `main.rs` یک crate جداست. برای رسیدن به library باید از نام package شروع کند:
+
+```rust
+// src/main.rs  (binary)
+use auth_service::config::AppConfig;   // ✅
+use crate::config::AppConfig;          // ❌ چون config در main.rs وصل نشده
+```
+
+اگر نام package خط تیره داشته باشد (مثلاً `auth-service`)، در کد به `_` تبدیل می‌شود: `auth_service::`.
+
+### ۶. دام: وصل کردن یک فایل به دو crate
+
+اگر در `main.rs` هم `mod config;` بنویسی، عبارت `crate::config::AppConfig` در `main.rs` کار می‌کند. ولی چون `lib.rs` هم همین فایل را وصل کرده، فایل **دو بار** کامپایل می‌شود و **دو نوع جدا** با اسم یکسان ساخته می‌شود:
+
+```rust
+// src/main.rs
+mod config;
+use auth_service::db::DbPool;
+
+fn main() {
+    let c = crate::config::AppConfig::from_env();
+    let pool = DbPool::connect(&c);   // ❌ mismatched types
+}
+```
+
+قانون عملی:
+
+- ماژولی که فقط مال `main.rs` است (مثلاً `cli.rs`) را در `main.rs` با `mod cli;` وصل کن و با `crate::cli` از آن استفاده کن.
+- ماژولی که در `lib.rs` وصل شده را در `main.rs` دوباره وصل نکن و با `auth_service::...` از آن استفاده کن.
+- هر فایل فقط باید به **یک** crate وصل باشد.
+
+### ۷. سؤال: آیا `pub mod auth;` کافی است تا در `main.rs` از آن استفاده کنم؟
+
+نه. دو کار مستقل اینجا هست:
+
+- کلمه‌ی `mod` باعث می‌شود فایل **کامپایل شود** و جزو library باشد.
+- کلمه‌ی `pub` باعث می‌شود از **بیرون** دیده شود.
+
+عبارت `pub mod auth;` فقط «در» module را باز می‌کند. **در Rust همه‌چیز به‌طور پیش‌فرض خصوصی است.** پس هر struct، تابع، فیلد و enumی که می‌خواهی از `main.rs` به آن برسی هم باید جداگانه `pub` باشد:
+
+```rust
+// src/lib.rs
+pub mod auth;              // ✅ قدم ۱: module عمومی است
+```
+
+```rust
+// src/auth.rs
+pub struct AuthService {   // ✅ قدم ۲: struct عمومی است
+    jwt_secret: String,    // ⚠️ فیلد خصوصی است
+}
+
+impl AuthService {
+    pub fn new() -> Self { /* ... */ }   // ✅ قدم ۳: تابع عمومی است
+    fn helper() { /* ... */ }            // ❌ خصوصی است
+}
+```
+
+```rust
+// src/main.rs
+use auth_service::auth::AuthService;   // ✅
+
+fn main() {
+    let a = AuthService::new();        // ✅ چون new عمومی است
+    AuthService::helper();             // ❌ خطا: private function
+    a.jwt_secret;                      // ❌ خطا: private field
+}
+```
+
+### ۸. صادر کردن دوباره (re-export) با `pub use`
+
+عبارت `pub use` یک چیز را از جای دیگری به module فعلی می‌آورد و **از اینجا هم عمومی می‌کند**. یعنی آن چیز یک آدرس دوم و کوتاه‌تر پیدا می‌کند.
+
+- عبارت `use` اسم را فقط برای **همین فایل** در دسترس می‌کند (خصوصی).
+- عبارت `pub use` اسم را برای **بیرونی‌ها** هم از این آدرس در دسترس می‌کند.
+
+مثال از پوشه‌ی [auth_service](auth_service/src/lib.rs):
+
+```
+src/lib.rs
+ └── mod auth_utils;          ← خصوصی
+      └── pub mod models;
+           └── pub struct Credentials
+```
+
+چون `auth_utils` خصوصی است، `main.rs` نمی‌تواند از مسیر کامل به `Credentials` برسد:
+
+```rust
+use auth_service::auth_utils::models::Credentials;   // ❌ خطا: module خصوصی است
+```
+
+برای همین در `lib.rs` نوشته شده:
+
+```rust
+// src/lib.rs
+mod auth_utils;                              // ← لازم است تا فایل کامپایل شود
+pub use auth_utils::models::Credentials;     // ← فقط Credentials را بیرون می‌دهد
+```
+
+و حالا `main.rs` با آدرس کوتاه به آن می‌رسد:
+
+```rust
+// src/main.rs
+use auth_service::Credentials;   // ✅
+```
+
+دقت کن که `pub use` **جای `mod` را نمی‌گیرد**، بلکه جای `pub` روی `mod` را می‌گیرد. خط `mod auth_utils;` همچنان لازم است.
+
+| روش در `lib.rs` | چه چیزی از بیرون دیده می‌شود؟ |
+|---|---|
+| فقط `mod auth_utils;` | هیچ‌چیز |
+| عبارت `pub mod auth_utils;` | همه‌ی چیزهای `pub` داخلش، با آدرس کامل |
+| عبارت `mod auth_utils;` به‌اضافه‌ی `pub use ...` | فقط چیزهایی که دوباره صادر شده‌اند، با آدرس کوتاه |
+| عبارت `pub mod auth_utils;` به‌اضافه‌ی `pub use ...` | همه‌چیز با آدرس کامل، و چیزهای صادرشده با آدرس کوتاه هم |
+
+چرا مفید است؟
+
+- **پنهان کردن ساختار داخلی:** کاربر library لازم نیست بداند `Credentials` در کدام فایل است.
+- **آزادی در تغییر:** اگر بعداً `models.rs` را جابه‌جا کنی، فقط خط `pub use` را عوض می‌کنی و کد کاربران دست نمی‌خورد.
+- **آدرس کوتاه‌تر:** به‌جای `auth_service::auth_utils::models::Credentials` فقط `auth_service::Credentials` می‌نویسی.
+
+خیلی از کتابخانه‌های معروف همین کار را می‌کنند. مثلاً `serde::Serialize` در یک module داخلی تعریف شده و از ریشه دوباره صادر شده است.
+
+### ۹. خلاصه
+
+| مفهوم | تعریف |
+|---|---|
+| پکیج (package) | پوشه‌ای که `Cargo.toml` دارد |
+| کریت (crate) | فایل ریشه (`lib.rs`، `main.rs` یا فایلی در `src/bin/`) به‌اضافه‌ی moduleهایش |
+| ماژول (module) | فایل `.rs` دیگری که والدش آن را با `mod` وصل کرده |
+| عبارت `mod name;` | فایل را جزو crate می‌کند (والد می‌نویسد) |
+| کلمه‌ی `pub` | دسترسی از بیرون را باز می‌کند و باید در هر مرحله‌ی مسیر باشد |
+| مسیر `crate::` | ریشه‌ی crate فعلی |
+| مسیر `auth_service::` | کتابخانه‌ی پروژه، از دید crateهای دیگر |
+| عبارت `pub use` | یک چیز را با آدرس کوتاه‌تر دوباره عمومی می‌کند (re-export) |

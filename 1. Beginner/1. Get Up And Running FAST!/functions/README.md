@@ -207,7 +207,31 @@ match find_user(2) {
 
 ## 6. No overloading
 
-**Python** can fake overloading with default args or `*args`:
+**What is function overloading?** Defining several functions with the **same name** but **different parameters**. The compiler picks which one to call based on the number or types of the arguments (the function's *signature*).
+
+Languages like **C++, Java and C#** support it:
+```cpp
+int add(int a, int b) { return a + b; }
+double add(double a, double b) { return a + b; }    // same name, different types
+int add(int a, int b, int c) { return a + b + c; }  // same name, different count
+
+add(1, 2);      // calls the first version
+add(1.5, 2.5);  // calls the second version
+add(1, 2, 3);   // calls the third version
+```
+
+**Python** doesn't have real overloading. A second `def` with the same name simply replaces the first:
+```python
+def add(a, b):
+    return a + b
+
+def add(a, b, c):   # replaces the previous add
+    return a + b + c
+
+add(1, 2)  # TypeError: missing 1 required positional argument: 'c'
+```
+
+So Python can only fake overloading with default args or `*args`:
 ```python
 def area(length, width=None):
     if width is None:
@@ -215,7 +239,11 @@ def area(length, width=None):
     return length * width       # rectangle
 ```
 
-**Rust** has no function overloading. Use traits or different function names:
+**Rust** has no function overloading either: each name in a scope refers to exactly one function. Instead you either:
+- give the functions **different names**, like the standard library does with `Vec::new()` and `Vec::with_capacity(10)`, or
+- use **generics and traits** so one function works with many types (covered in later chapters).
+
+Different function names:
 ```rust
 fn square_area(side: f64) -> f64 {
     side * side
