@@ -470,3 +470,485 @@ error[E0004]: non-exhaustive patterns: `Err(_)` not covered
 | `map_err()`     | No            | Yes (Result)   | Transform error value           |
 | `and_then()`    | No            | Yes (Result)   | Chain fallible operations       |
 | `?`             | No            | Yes            | Propagate errors up the call stack |
+
+---
+
+## دسته‌بندی متدها بر اساس چهار کار اصلی
+
+به‌جای اینکه بپرسیم «`Ok` مهم است یا `Err`؟»، بهتر است بپرسیم **با مقدار داخل `Result` یا `Option` چه کاری می‌خواهیم بکنیم؟** چهار کار اصلی داریم:
+
+1. **استخراج (Extract):** مقدار را بیرون بکش (خروجی دیگر `Result`/`Option` نیست).
+2. **تبدیل (Transform):** محتوا را عوض کن ولی بسته‌بندی بماند.
+3. **زنجیره (Chain):** عملیات بعدی را که خودش ممکن است شکست بخورد، پشت سر هم وصل کن.
+4. **ارسال به بالا (Propagate):** خطا را به تابع صدازننده برگردان.
+
+> تقریباً همه‌ی این متدها هم روی `Result` و هم روی `Option` کار می‌کنند (به‌جز `map_err` که فقط مال `Result` است).
+
+---
+
+### ۱. استخراج (Extract) — بیرون کشیدن مقدار
+
+خروجی این‌ها **مقدار خام** است (مثلاً `i32`)، نه `Result`. سؤال اصلی این است: **اگر شکست خورد، چه کنم؟**
+
+#### الف) اگر شکست خورد → panic
+
+متدهای `unwrap` و `expect` مقدار را برمی‌گردانند و در حالت `Err`/`None` برنامه را متوقف می‌کنند. فرقشان فقط پیام سفارشی در `expect` است.
+
+```rust
+let n: i32 = "42".parse().unwrap();                 // 42
+let n: i32 = "42".parse().expect("should be a number");  // 42
+// "abc".parse::<i32>().unwrap();                   // panic!
+```
+
+#### ب) اگر شکست خورد → مقدار پیش‌فرض
+
+در این حالت **خطا برایمان مهم نیست** و فقط یک جایگزین می‌خواهیم:
+
+- متد `unwrap_or(x)`: خودت مقدار پیش‌فرض را می‌دهی (همیشه محاسبه می‌شود، حتی اگر لازم نباشد).
+- متد `unwrap_or_default()`: مقدار پیش‌فرض نوع را می‌دهد (مثلاً `0` برای `i32` یا `""` برای `String`).
+- متد `unwrap_or_else(closure)`: مقدار پیش‌فرض را **فقط در صورت شکست** با یک closure می‌سازد. در `Result` خطا هم به closure داده می‌شود (`|e|`).
+
+```rust
+let a = "abc".parse::<i32>().unwrap_or(0);          // 0
+let b = "abc".parse::<i32>().unwrap_or_default();   // 0
+let c = "abc".parse::<i32>().unwrap_or_else(|e| {
+    println!("error: {e}");                         // error: invalid digit found in string
+    -1
+});                                                 // -1
+let name = None::<&str>.unwrap_or("unknown");       // "unknown"
+```
+
+#### ج) کنترل کامل یا فقط یک حالت
+
+ساختار `match` همه‌ی حالت‌ها را پوشش می‌دهد. ساختارهای `if let`، `while let` و `let else` فقط حالتی را که برایت مهم است می‌گیرند. در `let else` بلوک else **باید** از جریان خارج شود (`return`، `break` یا `panic!`).
+
+```rust
+fn parse_age(s: &str) -> i32 {
+    let Ok(age) = s.parse::<i32>() else {
+        return 0;          // must exit here
+    };
+    age                    // from here on, age is a plain i32
+}
+// parse_age("x") → 0
+```
+
+---
+
+### ۲. تبدیل (Transform) — تغییر محتوا، بسته‌بندی می‌ماند
+
+خروجی این‌ها **هنوز `Result` یا `Option`** است. فقط محتوای داخل یا نوع بسته‌بندی عوض می‌شود.
+
+#### الف) تغییر مقدار موفق → `map`
+
+متد `map` فقط روی `Ok`/`Some` اجرا می‌شود. `Err`/`None` دست‌نخورده عبور می‌کند.
+
+```rust
+let r: Result<i32, String> = Ok(2);
+r.map(|x| x * 10);                  // Ok(20)
+
+let e: Result<i32, String> = Err("bad".to_string());
+e.map(|x| x * 10);                  // Err("bad") — untouched
+```
+
+#### ب) تغییر خطا → `map_err`
+
+برعکس `map` است: فقط روی `Err` اجرا می‌شود و `Ok` دست‌نخورده عبور می‌کند. معمولاً برای تبدیل خطا به نوع خطای تابع خودمان به کار می‌رود.
+
+```rust
+"abc".parse::<i32>().map_err(|e| format!("invalid input: {e}"));
+// Err("invalid input: invalid digit found in string")
+```
+
+#### ج) تبدیل بین `Option` و `Result`
+
+- متد `ok_or(err)` یا `ok_or_else(|| err)`: تبدیل `Option` به `Result` (به `None` یک خطا می‌دهد).
+- متد `.ok()`: تبدیل `Result` به `Option` (خطا دور ریخته می‌شود).
+
+```rust
+let v = vec![1, 2, 3];
+v.get(10).ok_or("index not found");  // Err("index not found")
+
+"abc".parse::<i32>().ok();             // None
+```
+
+#### 💡 نکته‌هایی برای به یاد ماندن
+
+**۱. قانون اطلاعات:** هر تبدیلی که اطلاعات را دور می‌ریزد، آرگومان نمی‌خواهد. هر تبدیلی که اطلاعات اضافه می‌کند، آرگومان می‌خواهد.
+
+- از `Result` به `Option`: خطا دور ریخته می‌شود و چیزی کم نمی‌آید، پس `.ok()` آرگومان ندارد.
+- از `Option` به `Result`: در حالت `None` خطایی وجود ندارد، پس خودت باید یکی بدهی: `ok_or(e)`.
+
+**۲. اسم‌ها را مثل جمله بخوان:**
+
+- متد `.ok()` یعنی «فقط قسمت ok را بده». روی `Result` صدا زده می‌شود. (همزادش `.err()` است که فقط قسمت خطا را نگه می‌دارد.)
+- متد `ok_or(e)` یعنی «Ok باشد، **وگرنه** e». روی `Option` صدا زده می‌شود: `Some(v)` می‌شود `Ok(v)` و `None` می‌شود `Err(e)`.
+
+**۳. کلمه‌ی `or` در اسم متدها** همیشه یعنی «اگر نبود، این را بگذار»، مثل `unwrap_or`، `ok_or` و `or`.
+
+**۴. پسوند `_else`** همه‌جا یعنی به‌جای خود مقدار یک **closure** بده که فقط در صورت نیاز اجرا شود:
+
+```rust
+opt.ok_or(make_error());          // make_error ALWAYS runs
+opt.ok_or_else(|| make_error());  // runs ONLY if None
+```
+
+| اسم | روی چه نوعی؟ | تبدیل | آرگومان |
+|---|---|---|---|
+| متد `.ok()` | روی `Result` | به `Option` | ندارد (خطا دور ریخته می‌شود) |
+| متد `ok_or(e)` | روی `Option` | به `Result` | خطای آماده |
+| متد `ok_or_else(f)` | روی `Option` | به `Result` | یک closure که خطا را می‌سازد |
+
+> خلاصه در یک جمله: **«دور ریختن مجانی است، ساختن خطا آرگومان می‌خواهد.»**
+
+---
+
+### ۳. زنجیره (Chain) — وصل کردن عملیات‌هایی که ممکن است شکست بخورند
+
+#### الف) اگر موفق بود → عملیات بعدی: `and_then`
+
+وقتی عملیات بعدی **خودش ممکن است شکست بخورد** (یعنی `Result` برمی‌گرداند)، از `and_then` استفاده کن.
+
+| closure چه برمی‌گرداند؟ | با `map` | با `and_then` |
+|---|---|---|
+| مقدار ساده: `20` | `Ok(20)` ✅ | خطای کامپایل |
+| مقدار `Result`: `Ok(5)` | `Ok(Ok(5))` ❌ تودرتو | `Ok(5)` ✅ |
+
+اگر ورودی `Err` باشد، هیچ‌کدام closure را اجرا نمی‌کنند و `Err` همان‌طور عبور می‌کند. پس در زنجیره‌ی `and_then`، **اولین شکست کل زنجیره را متوقف می‌کند**.
+
+```rust
+fn parse(s: &str) -> Result<i32, String> {
+    s.parse::<i32>().map_err(|e| e.to_string())
+}
+
+fn check_positive(n: i32) -> Result<i32, String> {
+    if n > 0 { Ok(n) } else { Err("must be positive".to_string()) }
+}
+
+parse("5").and_then(check_positive);   // Ok(5)
+parse("-5").and_then(check_positive);  // Err("must be positive")
+parse("x").and_then(check_positive);   // Err("invalid digit found in string") — check_positive never ran
+```
+
+#### 🔬 مقایسه‌ی دقیق `map` و `and_then`
+
+فرق اصلی این است که **چه کسی مقدار را داخل `Ok` می‌گذارد**:
+
+- متد `map` هر چیزی را که closure برگرداند، **خودش** داخل یک `Ok` می‌گذارد.
+- متد `and_then` خروجی closure را **همان‌طور که هست** برمی‌گرداند و چیزی اضافه نمی‌کند.
+
+پیاده‌سازی ساده‌شده‌ی هر دو:
+
+```rust
+fn map(self, f) -> Result<U, E> {
+    match self {
+        Ok(v) => Ok(f(v)),   // wraps f's output in Ok
+        Err(e) => Err(e),
+    }
+}
+
+fn and_then(self, f) -> Result<U, E> {
+    match self {
+        Ok(v) => f(v),       // returns f's output as-is
+        Err(e) => Err(e),
+    }
+}
+```
+
+تنها فرق، همان `Ok(f(v))` در برابر `f(v)` است.
+
+> 💡 **راه به خاطر سپردن:**
+>
+> - **در `map`:** خروجی `Ok(f(v))` است. خودِ `map` دور خروجی `Ok` می‌گذارد، پس `f(v)` می‌تواند **هر چیزی** باشد و نتیجه همیشه `Result` می‌شود.
+> - **در `and_then`:** خروجی خودِ `f(v)` است و کسی `Ok` اضافه نمی‌کند، پس `f(v)` **باید ذاتاً `Result` باشد**.
+
+**چرا نوع خطا هم باید یکی باشد؟** در `match` همه‌ی شاخه‌ها باید هم‌نوع باشند:
+
+```rust
+match self {
+    Ok(v) => f(v),       // this arm's type...
+    Err(e) => Err(e),    // ...must match this arm's type: Result<_, E>
+}
+```
+
+شاخه‌ی `Err(e)` یک `Result` با نوع خطای `E` است. پس `f(v)` هم باید `Result` باشد، **و با همان نوع خطای `E`**. اگر نوع خطاها فرق داشته باشد (مثلاً یکی `String` و دیگری `ParseIntError`)، اول باید با `map_err` آن‌ها را یکی کنی. متد `map` این شرط را ندارد، چون closure آن اصلاً خطایی برنمی‌گرداند.
+
+**متد `map` همیشه تودرتو نمی‌سازد.** اگر closure یک مقدار ساده برگرداند، `map` کاملاً درست کار می‌کند:
+
+```rust
+Ok(2).map(|x| x * 10)   // Ok(20)
+```
+
+تودرتو شدن فقط **وقتی** پیش می‌آید که closure خودش `Result` برگرداند، مثل `check_positive`.
+
+##### باز کردن هر دو با `match`
+
+این همان دو مثال قبلی (با تابع‌های `parse` و `check_positive` که بالاتر تعریف شدند) است که با `match` باز شده تا ببینی پشت صحنه چه اتفاقی می‌افتد.
+
+این کد:
+
+```rust
+let r = parse("5").and_then(check_positive);
+```
+
+با `match` می‌شود:
+
+```rust
+let r: Result<i32, String> = match parse("5") {
+    Ok(v) => check_positive(v),   // return its Result as-is
+    Err(e) => Err(e),             // parse failed → pass the error through
+};
+```
+
+و این کد:
+
+```rust
+let r = parse("5").map(check_positive);
+```
+
+با `match` می‌شود:
+
+```rust
+let r: Result<Result<i32, String>, String> = match parse("5") {
+    Ok(v) => Ok(check_positive(v)),   // wraps the Result in another Ok
+    Err(e) => Err(e),
+};
+```
+
+فرق فقط در شاخه‌ی `Ok` است. همان یک `Ok` اضافه، نوع را تودرتو می‌کند.
+
+##### نتیجه برای سه ورودی
+
+| ورودی | قدم اول: `parse` | با `and_then` | با `map` |
+|---|---|---|---|
+| مقدار `"5"` | `Ok(5)` | `Ok(5)` | `Ok(Ok(5))` |
+| مقدار `"-5"` | `Ok(-5)` | `Err("must be positive")` | `Ok(Err("must be positive"))` |
+| مقدار `"x"` | `Err("invalid digit...")` | `Err("invalid digit...")` | `Err("invalid digit...")` |
+
+- **ردیف `"x"`:** هر دو یکسان‌اند، چون `parse` شکست خورد و رفت در شاخه‌ی `Err`. تابع `check_positive` اصلاً صدا زده نشد.
+- **ردیف `"-5"` با `map`:** نتیجه `Ok(Err(...))` است. یعنی بیرونش می‌گوید «موفق» ولی داخلش خطاست. این گیج‌کننده است، و به همین دلیل اینجا باید از `and_then` استفاده کرد.
+- **متد `map` نمی‌تواند `Ok` را به `Err` تبدیل کند،** چون وقتی ورودی `Ok` است، خروجی closure حتماً داخل یک `Ok` گذاشته می‌شود. ولی `and_then` می‌تواند: در ردیف `"-5"`، مقدار `Ok(-5)` به `Err` تبدیل شد.
+
+اگر بخواهی با `map` به همان نتیجه برسی، باید یک قدم اضافه بزنی تا لایه‌ی بیرونی را باز کنی:
+
+```rust
+let r = parse("5").map(check_positive).and_then(|inner| inner);  // Ok(5)
+```
+
+متد `and_then` همین دو کار را یک‌جا انجام می‌دهد.
+
+##### قانون انتخاب
+
+| خروجی closure | متد مناسب |
+|---|---|
+| مقدار ساده، مثل `i32` یا `String` | متد `map` |
+| خودش `Result` یا `Option` است (یعنی ممکن است شکست بخورد) | متد `and_then` |
+
+> همین قانون برای `Option` هم برقرار است: `Some(...)` جای `Ok(...)` را می‌گیرد.
+
+#### ب) اگر شکست خورد → امتحان یک جایگزین: `or` و `or_else`
+
+برعکس `and_then` است: فقط در حالت `Err`/`None` اجرا می‌شود و یک `Result`/`Option` دیگر را امتحان می‌کند. فرقش با `unwrap_or` این است که خروجی هنوز بسته‌بندی شده است.
+
+هر دو متد **هم روی `Option` و هم روی `Result`** کار می‌کنند. تنها فرق در closure متد `or_else` است:
+
+- روی `Option`: closure ورودی ندارد (`|| ...`)، چون `None` چیزی برای دادن ندارد.
+- روی `Result`: closure **خطا را می‌گیرد** (`|e| ...`)، پس می‌توانی بر اساس نوع خطا تصمیم بگیری که جایگزین بدهی یا خطا را نگه داری.
+
+```rust
+// on Option
+None.or(Some(1));                   // Some(1)
+None::<i32>.or_else(|| Some(8080)); // Some(8080)
+
+// on Result
+let a: Result<i32, &str> = Err("first one failed");
+let r: Result<i32, &str> = a.or(Ok(0));  // Ok(0)
+
+let b: Result<i32, &str> = Err("timeout");
+b.or_else(|e| if e == "timeout" { Ok(-1) } else { Err(e) });  // Ok(-1)
+
+let c: Result<i32, &str> = Ok(5);
+let r: Result<i32, &str> = c.or(Ok(0));  // Ok(5) — it succeeded, fallback not used
+```
+
+---
+
+### ۴. ارسال به بالا (Propagate) — عملگر `?`
+
+اگر `Ok`/`Some` باشد، مقدار داخل را می‌دهد. اگر `Err`/`None` باشد، **همان لحظه از تابع return می‌کند** و خطا را به صدازننده می‌دهد.
+
+```rust
+use std::num::ParseIntError;
+
+fn sum(a: &str, b: &str) -> Result<i32, ParseIntError> {
+    let x = a.parse::<i32>()?;   // on error, returns right here
+    let y = b.parse::<i32>()?;
+    Ok(x + y)
+}
+// sum("2", "3") → Ok(5)
+// sum("2", "x") → Err(ParseIntError { kind: InvalidDigit })
+
+fn first_upper(s: &str) -> Option<char> {
+    let c = s.chars().next()?;   // empty string → returns None
+    Some(c.to_ascii_uppercase())
+}
+// first_upper("rust") → Some('R')
+// first_upper("")     → None
+```
+
+نکته‌ها:
+
+- فقط داخل تابعی کار می‌کند که خودش `Result` یا `Option` برمی‌گرداند.
+- در `Result` خطا را عیناً برنمی‌گرداند، بلکه اول با `From` آن را به نوع خطای تابع تبدیل می‌کند.
+
+#### 🧠 «بالا» یعنی کجا؟
+
+وقتی تابع A تابع B را صدا می‌زند، A «بالای» B است. «ارسال به بالا» یعنی B به خطا خورده ولی **خودش تصمیم نمی‌گیرد** با آن چه کند. خطا را به A تحویل می‌دهد تا A تصمیم بگیرد.
+
+یک تشبیه: مدیر از کارمند گزارش می‌خواهد و کارمند از کارآموز داده می‌خواهد. کارآموز می‌بیند فایل داده‌ها وجود ندارد. سه راه دارد:
+
+| کار کارآموز | معادل در Rust |
+|---|---|
+| همه‌چیز را رها کند و برود | متدهای `unwrap` و `expect` (panic) |
+| خودش یک عدد الکی بگذارد | متدهای `unwrap_or` و `unwrap_or_else` |
+| به کارمند بگوید «فایل نبود» | عملگر `?` (ارسال به بالا) |
+
+کارمند هم می‌تواند خودش مشکل را حل کند یا دوباره به مدیر بگوید. در نهایت کسی تصمیم می‌گیرد که **دید کلی دارد**.
+
+#### 🔍 عملگر `?` پشت صحنه چه می‌نویسد؟
+
+عملگر `?` یک **خلاصه‌نویسی** است (به انگلیسی: syntactic sugar). یعنی تو کوتاه می‌نویسی و کامپایلر آن را به کد کامل باز می‌کند:
+
+```rust
+// what you write:
+let x = a.parse::<i32>()?;
+
+// what the compiler sees:
+let x = match a.parse::<i32>() {
+    Ok(v) => v,                          // success → give the value, keep going
+    Err(e) => return Err(From::from(e)), // failure → exit the function NOW
+};
+```
+
+پس داخل `?` یک **`return` پنهان** وجود دارد. عملگر `?` خطا را حل نمی‌کند، فقط تابع را زودتر تمام می‌کند و خطا را تحویل صدازننده می‌دهد.
+
+#### ⚠️ چرا `return` لازم است؟ فرق `Err(e) => Err(e)` با `Err(e) => return Err(e)`
+
+کلمه‌ی `return` یعنی **از کل تابع خارج شو**. بدون آن، `Err(e)` فقط **نتیجه‌ی همان `match`** می‌شود و تابع به کارش ادامه می‌دهد.
+
+```rust
+// ❌ without return
+let x = match a.parse::<i32>() {
+    Ok(v) => v,          // this arm gives i32
+    Err(e) => Err(e),    // this arm gives Result
+};
+// does not compile: all match arms must have the same type
+// (match arms have incompatible types)
+```
+
+```rust
+// ✅ with return
+let x = match a.parse::<i32>() {
+    Ok(v) => v,
+    Err(e) => return Err(e),   // exits the function, never reaches x
+};
+// x is always a clean i32
+```
+
+شاخه‌ی دارای `return` هیچ‌وقت مقداری به `x` نمی‌دهد، چون قبلش از تابع خارج شده‌ایم. برای همین کامپایلر با آن مشکلی ندارد.
+
+| کد | نتیجه |
+|---|---|
+| حالت `Err(e) => Err(e)` | مقدار `match` می‌شود `Err` و تابع ادامه می‌دهد |
+| حالت `Err(e) => return Err(e)` | تابع همین‌جا تمام می‌شود و `Err` به صدازننده می‌رسد |
+
+#### 🪜 یک مثال کامل: خطا پله‌پله بالا می‌رود
+
+```rust
+use std::num::ParseIntError;
+
+// bottom step: only converts
+fn parse_number(s: &str) -> Result<i32, ParseIntError> {
+    s.parse::<i32>()
+}
+
+// middle step: adds, but makes no decision about errors
+fn sum(a: &str, b: &str) -> Result<i32, ParseIntError> {
+    let x = parse_number(a)?;
+    let y = parse_number(b)?;
+    Ok(x + y)               // reached only if both succeeded
+}
+
+// top step: the final decision is made here
+fn main() {
+    match sum("2", "x") {
+        Ok(total) => println!("sum: {total}"),
+        Err(e) => println!("bad input: {e}"),
+    }
+}
+```
+
+مسیر خطا:
+
+```
+parse_number("x")  ← error is created here
+      ↑ Err
+sum                ← sends it up with ? (Ok(x + y) never runs)
+      ↑ Err
+main               ← decides with match: print a message
+```
+
+**چرا این کار خوب است؟** تابع `sum` نمی‌داند در چه برنامه‌ای استفاده می‌شود. شاید یک برنامه بخواهد پیام چاپ کند، یکی مقدار پیش‌فرض بگذارد و دیگری دوباره از کاربر ورودی بگیرد. پس بهتر است `sum` تصمیم نگیرد.
+
+#### 🚫 اگر صدازننده هم خطا را مدیریت نکند چه؟
+
+**در Rust خطا نمی‌تواند بی‌صدا گم شود.** صدازننده یک `Result` دریافت می‌کند، نه یک عدد. پس نمی‌تواند مستقیم از عدد استفاده کند و باید یکی از این کارها را بکند:
+
+**۱. مدیریتش کند،** با `match` یا `unwrap_or` یا روش‌های دیگر.
+
+**۲. خودش هم با `?` بالاتر بفرستد.** خطا یک پله‌ی دیگر بالا می‌رود.
+
+**۳. نادیده‌اش بگیرد.** اگر کلاً به نتیجه کاری نداشته باشد، کامپایلر هشدار می‌دهد:
+
+```rust
+sum("2", "x");          // ⚠️ warning: unused `Result` that must be used
+
+let _ = sum("2", "x");  // ✅ explicit: I know, I discard it on purpose
+```
+
+**۴. اگر خطا تا `main` بالا برود چه؟** تابع `main` هم می‌تواند `Result` برگرداند و در این صورت داخلش `?` مجاز است:
+
+```rust
+fn main() -> Result<(), ParseIntError> {
+    let total = sum("2", "x")?;
+    println!("{total}");
+    Ok(())
+}
+```
+
+اگر خطا به اینجا برسد، Rust خودش آن را چاپ می‌کند و برنامه با **کد خروج ۱** (یعنی ناموفق) تمام می‌شود:
+
+```
+Error: ParseIntError { kind: InvalidDigit }
+```
+
+> خلاصه: خطا یا جایی مدیریت می‌شود، یا تا `main` بالا می‌رود و برنامه با پیام خطا تمام می‌شود. **گم شدن بی‌صدا ممکن نیست**، در حالی که در Python یک exception ممکن است بی‌خبر برنامه را در production از کار بیندازد.
+
+#### 📝 خلاصه در یک جمله
+
+**«اگر موفق بود مقدار را بده و ادامه بده؛ اگر شکست خورد از تابع خارج شو و خطا را به صدازننده تحویل بده.»**
+
+---
+
+### جمع‌بندی
+
+| کار اصلی | سؤال | متدها | خروجی |
+|---|---|---|---|
+| استخراج | اگر شکست خورد panic کنم؟ | متدهای `unwrap` و `expect` | مقدار خام |
+| استخراج | اگر شکست خورد مقدار پیش‌فرض بدهم؟ | متدهای `unwrap_or`، `unwrap_or_default` و `unwrap_or_else` | مقدار خام |
+| استخراج | همه‌ی حالت‌ها یا فقط یک حالت؟ | ساختارهای `match`، `if let`، `while let` و `let else` | دست خودت |
+| تبدیل | مقدار موفق را عوض کنم؟ | متد `map` | بسته‌بندی‌شده |
+| تبدیل | خطا را عوض کنم؟ | متد `map_err` | بسته‌بندی‌شده |
+| تبدیل | بین `Option` و `Result` جابه‌جا کنم؟ | متدهای `ok_or`، `ok_or_else` و `.ok()` | بسته‌بندی‌شده |
+| زنجیره | اگر موفق بود عملیات بعدی؟ | متد `and_then` | بسته‌بندی‌شده |
+| زنجیره | اگر شکست خورد جایگزین امتحان کنم؟ | متدهای `or` و `or_else` | بسته‌بندی‌شده |
+| ارسال به بالا | خطا را به صدازننده بدهم؟ | عملگر `?` | مقدار خام (یا return زودهنگام) |
